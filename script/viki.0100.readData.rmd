@@ -1,0 +1,48 @@
+```{r libraries, echo=FALSE}
+suppressMessages(library(magrittr))
+suppressMessages(library(stringr))
+suppressMessages(library(dplyr))
+```
+
+## Disclaimer: 
+Records only includes cases where User began watching from Episode1
+
+## Summary
+
+* mv_ratio 
+* score 
+
+>NOTE:: Country is masked
+
+geoblock (only some of the countries are available)
+
+```{r behavior}
+behave      = data.table::fread("../data/Behavior_training.csv")
+dateTime    = behave$date_hour %>% 
+                str_split(pattern="T") %>% 
+                do.call(rbind,.) %>% 
+                as.data.frame %>% setNames(c("date", "time"))
+
+dateTime    %<>% mutate(date = lubridate::ymd(date))
+behave      %<>% cbind(dateTime)
+str(behave)
+```
+
+
+```{r users}
+users  = read.csv("../data/User_attributes.csv")
+str(users)
+```
+
+```{r videos}
+videos_attributes = read.csv("../data/Video_attributes.csv", h = T)
+str(videos_attributes)
+
+videos_casts      = read.csv("../data/Video_casts.csv", h = T)
+str(videos_casts)
+```
+
+```{r save}
+save(behave, users, videos_attributes, videos_casts, file="../data/data.Rdata")
+```
+
