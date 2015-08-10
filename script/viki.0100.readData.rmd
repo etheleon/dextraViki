@@ -21,7 +21,7 @@ Records only includes cases where User began watching from Episode1
 ## Summary
 
 * mv_ratio 
-* score 
+* score
 
 >NOTE:: Country is masked
 
@@ -92,6 +92,7 @@ sapply(countryTable$freq, function(freq){
        }
 })
 
+mergeddf = merge(videos <- attributes, videos <- casts, by.x="container_id", by.y="contained_id", all=T)
 #quantile(countryTable$freq, c(seq(0.05, 0.95, by=0.05)))
 
 
