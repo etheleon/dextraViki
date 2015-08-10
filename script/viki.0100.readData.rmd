@@ -2,10 +2,21 @@
 suppressMessages(library(magrittr))
 suppressMessages(library(stringr))
 suppressMessages(library(dplyr))
+suppressMessages(library(ggplot2))
+theme_set(theme_bw())
 ```
 
 ## Disclaimer: 
 Records only includes cases where User began watching from Episode1
+
+- Even if user watched the video many times, only one record is there but total watched time increases
+- Includes only registered user
+- Watching time of a particular video is an aggregate of the time (Oct to Jan)
+- mv_ratio = watched time * 100/total duration
+- score = mv_ratio<20; 20<..<80; >80 (equivalent scores - 1,2,3)
+- each container is a video series
+- each video is not available in al the countries
+- total 632 videos
 
 ## Summary
 
@@ -15,8 +26,9 @@ Records only includes cases where User began watching from Episode1
 >NOTE:: Country is masked
 
 geoblock (only some of the countries are available)
+TV series are also availble in limited countries
 
-```{r behavior}
+```{r behavior, eval=FALSE}
 behave      = data.table::fread("../data/Behavior_training.csv")
 dateTime    = behave$date_hour %>% 
                 str_split(pattern="T") %>% 
@@ -28,21 +40,70 @@ behave      %<>% cbind(dateTime)
 str(behave)
 ```
 
+* recommendation will only make sense for people who only watched one episode
+* 
 
-```{r users}
+
+
+```{r users, eval=FALSE}
 users  = read.csv("../data/User_attributes.csv")
 str(users)
 ```
 
-```{r videos}
+```{r videos, eval=FALSE}
 videos_attributes = read.csv("../data/Video_attributes.csv", h = T)
 str(videos_attributes)
 
 videos_casts      = read.csv("../data/Video_casts.csv", h = T)
+videos_casts %<>% setNames(c("contained_id", "cast_person_id","country", "casts_gender"))
 str(videos_casts)
 ```
 
-```{r save}
+```{r save, eval=FALSE}
 save(behave, users, videos_attributes, videos_casts, file="../data/data.Rdata")
 ```
 
+```{r}
+load(file="../data/data.Rdata")
+```
+
+## Checking
+
+```{r season}
+videos_attributes %>% ggplot(aes(season_number)) + 
+  geom_bar()
+```
+
+```{r country}
+countryTable = users$country %>% 
+table %>% 
+as.data.frame %>% 
+setNames(c("country", "freq")) %>% 
+arrange(desc(freq))
+
+i=0
+a=0
+sapply(countryTable$freq, function(freq){
+
+       
+       if(i < sum(countryTable$freq) * 0.95){
+       i <<- i + freq
+       a <<- a+ 1
+       }
+})
+
+#quantile(countryTable$freq, c(seq(0.05, 0.95, by=0.05)))
+
+
+users %>% ggplot(aes(country)) + geom_bar()
+
+countryFreq = users$country %>% table %>% as.data.frame %>% setNames(c("country", "freq"))
+ggplot(countryFreq, aes(reorder(country, freq), freq)) + geom_bar(stat="identity") + scale_y_log10()
+
+
+
+filter(countryFreq, freq > 1) %>% nrow
+```
+
+* find countries with 95% for counts or time 
+* he likes viki (Num of videos he watchs), but if the time is short the videos arent matchin his expectation. 
