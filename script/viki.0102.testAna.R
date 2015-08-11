@@ -6,9 +6,12 @@ mergedVideo <- merge(videos_casts,
              videos_attributes,
              by.x="contained_id",
              by.y="container_id",
-             all.y=T)
+             all=T)
+#Bad idea
+#video_behave = merge(mergedVideo, behave, by="video_id", all=T)
 
 
+#genres
 genres = videos_attributes$genres             %>%
 as.character                         %>%
 sapply(function(x) strsplit(x,", ")) %>%
@@ -29,5 +32,10 @@ theme(axis.text.x=element_text(angle=90))
 #    video id with behavior
 #casts wide format
 
-videos <- casts %>% 
-select(-country, -casts <- gender) %>% spread(contained <- id, cast <- person <- id)
+#Wide format
+#Might be useful
+
+containerWide = videos_casts %>%
+select(-country)      %>% 
+spread(cast_person_id, casts_gender)
+
