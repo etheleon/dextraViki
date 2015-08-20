@@ -30,3 +30,14 @@ dev.off()
 # Things we want to do now: 1) See how the user and video clusters
 =======
 >>>>>>> cad02c09bb65307178178a1db1fcdf96a7efd21f
+
+#finding score by country
+ScorebyCountry <- uu %>% group_by((country) %>% summarise(ScoreCountrywise = sum(totalScore)) %>% arrange(desc(ScoreCountrywise))
+
+#keeping only imp variables
+userVideoNocast <- subset(x = user_video_nocast, select = c(video_id, user_id, score, date, time, country, gender, container_id, origin_country, origin_language, adult, broadcast_from, broadcast_to, genres))
+
+#no of users vs #views
+abc <- behave %>% group_by(user_id) %>% summarise(freq = n(), totalScore = sum(score)) %>% arrange(desc(freq)))
+uu2 <- merge(uu, abc, by = c("user_id", "totalScore")) %>% arrange(desc(freq))
+uu3<- filter(uu2, uu2$freq > 16, uu2$totalScore > 32)
