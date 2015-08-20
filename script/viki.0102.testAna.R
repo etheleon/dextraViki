@@ -141,20 +141,54 @@ if(is.list(allGenres)){
 
 dff = read.table("../out/viki.0103.output")
 dff2 = dff[,-1]
-colnames(dff2) = genres
 
-userPCA = prcomp(dff2, center=T,scale.=T)
+colnames(dff2) = c(genres, "country", "gender")
 
-woKDrama = dff2[,-10] #removed korean
+dfMales = dff2 %>% filter(gender == "m") 
+malesPCA = prcomp(dfMales[, 1:33], center = T, scale.=T)
+pdf("../out/viki.0102.pcaGender_justMales.pdf", w=20, h=20)
+plot(malesPCA, type="l")
+   ggbiplot(malesPCA, obs.scale = 1, var.scale = 1, ellipse = TRUE,circle = TRUE)
+   ggbiplot(malesPCA, obs.scale = 1, choices = c(1,3), var.scale = 1, ellipse = TRUE,circle = TRUE)
+   ggbiplot(malesPCA, obs.scale = 1, choices = c(2,3), var.scale = 1, ellipse = TRUE,circle = TRUE)
+dev.off()
 
-userPCA_woKDrama = prcomp(woKDrama, center=T,scale.=T)
+dffemales = dff2 %>% filter(gender == "f") 
+femalesPCA = prcomp(dffemales[, 1:33], center = T, scale.=T)
+pdf("../out/viki.0102.pcaGender_justfemales.pdf", w=20, h=20)
+plot(femalesPCA, type="l")
+   ggbiplot(femalesPCA, obs.scale = 1, var.scale = 1, ellipse = TRUE,circle = TRUE)
+   ggbiplot(femalesPCA, obs.scale = 1, choices = c(1,3), var.scale = 1, ellipse = TRUE,circle = TRUE)
+   ggbiplot(femalesPCA, obs.scale = 1, choices = c(2,3), var.scale = 1, ellipse = TRUE,circle = TRUE)
+dev.off()
 
-plot(userPCA_woKDrama, type="l")
+countryGender = dff2[,34:35]
+userPCA = prcomp(dff2[, 1:33], center=T,scale.=T)
 
-g2 <- ggbiplot(userPCA_woKDrama, obs.scale = 1, var.scale = 1, ellipse = TRUE,circle = TRUE) + geom_point(aes
+#woKDrama = dff2[,-10] #removed korean
+
+#userPCA_woKDrama = prcomp(woKDrama, center=T,scale.=T)
 
 
-#g <- g + scale_color_discrete(name = '')
-#g <- g + theme(legend.direction = 'horizontal',legend.position = 'top')
+png("../out/viki.0102.pcaGender.png")
+plot(userPCA, type="l")
+ggbiplot(userPCA, obs.scale = 1, var.scale = 1, ellipse = TRUE,circle = TRUE, group=countryGender[,2])
+ggbiplot(userPCA, obs.scale = 1, choices = c(1,3), var.scale = 1, ellipse = TRUE,circle = TRUE, group=countryGender[,2])
+ggbiplot(userPCA, obs.scale = 1, choices = c(2,3), var.scale = 1, ellipse = TRUE,circle = TRUE, group=countryGender[,2])
+dev.off()
 
 
+library(rgl); 
+rgl.open(); 
+offset <- 50; 
+par3d(windowRect=c(offset, offset, 640+offset, 640+offset)); 
+rm(offset); 
+rgl.clear(); 
+rgl.viewpoint(theta=45, phi=30, fov=60, zoom=1); 
+spheres3d(userPCA$x[,1], userPCA$x[,2], userPCA$x[,3], radius=0.3, color=as.character(tt), alpha=1, shininess=20); 
+#aspect3d(1, 1, 1); axes3d(col='black'); title3d("", "", "PC1", "PC2", "PC3", col='black'); bg3d("
+
+library(dplyr)
+abc <- behave %>% group_by(user_id) %>% summarise(freq = dplyr::n(), totalScore = sum(score)) %>% arrange(desc(freq))
+uu2 <- merge(uu, abc, by = c("user <- id", "totalScore")) %>% arrange(desc(freq))
+uu3<- filter(uu2, uu2$freq >= 16, uu2$totalScore >= 32)
