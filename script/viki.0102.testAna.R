@@ -2,6 +2,7 @@
 
 load("../data/data.Rdata")
 
+library(parallel)
 library(magrittr)
 library(dplyr)
 library(ggbiplot)
@@ -19,7 +20,9 @@ mergedVideo <- merge(videos_casts,
 #Bad idea
 #video_behave = merge(mergedVideo, behave, by="video_id", all=T)
 user_video_nocast$user_id %<>% as.factor
-user_score <- user_video_nocast %>% group_by(user_id) %>% dplyr::summarize(totalScore = sum(score))
+
+user_score <- user_video_nocast %>% group_by(user_id) %>% dplyr::summarize
+totalScore = sum(score))
 uu = merge(user_score, users)
 
 gender = gender, user_country = country) %>% arrange(desc(totalScore)) %>% head
@@ -105,13 +108,6 @@ videos_casts            %>%
 select(-country)        %>%
 spread(cast_person_id, casts_gender)
 
-
-
-#By user takes too long
-videosGenre = user_video_nocast %>% 
-select(video_id, genres) %>% 
-unique
-
 videosGenre$string = lapply(videosGenre$genres, function(gString){
         gString %>% 
         as.character %>%
@@ -121,23 +117,29 @@ videosGenre$string = lapply(videosGenre$genres, function(gString){
             })
         }) %>% do.call(c,.) %>% unname
 
-
-
 mUsers = matrix(rep(0, nrow(users)*length(genres)), nrow = nrow(users))
 
-#genres
-unique(user_video_nocast$user_id) %>%
-lapply(function(x){
-genresString = filter(user_video_nocast, user_id == x) %$% genres
-allGenres = sapply(genresString, function(entries){entries %>% as.character %>% strsplit(", ") %>% .[[1]] })
-if(is.list(allGenres)){
-    allGenres = do.call(c,allGenres)
-    allGenres %>% sapply(function(genreName){
-                    mUsers[x, which(genres %in% genreName)] <<- mUsers[x, which(genres %in% genreName)] + 1
-               })
-    }
+#genres to
+genresList = genres
+
+
+genresString =
+   hiFreqUsers$genres %>%
+   as.character       %>%
+sapply(function(gen){
+     paste0((genresList %in% (gen %>% strsplit(", ") %>% .[[1]])) * 1,collapse="")
 })
 
+weightedMatrix = hiFreqUsers %>% apply(1, function(row){
+        aString = paste0(
+            (genresList %in% (row["genres"] %>% strsplit(", ") %>% .[[1]])) * as.integer(row["mv_ratio"]),
+        collapse="|")
+        data.frame(user = as.integer(row["user_id"]), String = aString, stringsAsFactors=FALSE)
+}) %>% do.call(rbind,.)
+
+df = data.frame(user = hiFreqUsers$user_id,string = genresString)
+
+write.table(df, file="../data/Videos_user_string.txt2", quote=F, sep="\t", row.names=F)
 
 dff = read.table("../out/viki.0103.output")
 dff2 = dff[,-1]
@@ -189,6 +191,26 @@ spheres3d(userPCA$x[,1], userPCA$x[,2], userPCA$x[,3], radius=0.3, color=as.char
 #aspect3d(1, 1, 1); axes3d(col='black'); title3d("", "", "PC1", "PC2", "PC3", col='black'); bg3d("
 
 library(dplyr)
-abc <- behave %>% group_by(user_id) %>% summarise(freq = dplyr::n(), totalScore = sum(score)) %>% arrange(desc(freq))
-uu2 <- merge(uu, abc, by = c("user <- id", "totalScore")) %>% arrange(desc(freq))
+abc <- behave %>% group_by(user_id) %>% summarise(freq = n(), totalScore = sum(score)) %>% arrange(desc(freq))
+uu2 <- merge(uu, abc, by = c("user_id", "totalScore")) %>% arrange(desc(freq))
 uu3<- filter(uu2, uu2$freq >= 16, uu2$totalScore >= 32)
+
+##################################################
+df_hiFreq = read.table("../out/viki.0103.output_hiFreq")
+df_hiFreq = df_hiFreq[,-1]
+colnames(df_hiFreq) = c(genres, "country", "gender")
+countryGender = df_hiFreq[,34:35]
+
+malesPCA = prcomp(df_hiFreq[, 1:33], center = T, scale.=T)
+library(ggbiplot)
+
+pdf("../out/viki.0102.pcaGender_hiFreq.pdf", w=20, h=20)
+plot(malesPCA, type="l")
+   ggbiplot(malesPCA, obs.scale = 1, var.scale = 1, ellipse = TRUE,circle = TRUE, groups = countryGender[,1])
+   ggbiplot(malesPCA, obs.scale = 1, choices = c(1,3), var.scale = 1, ellipse = TRUE,circle = TRUE, groups = countryGender[,1])
+   ggbiplot(malesPCA, obs.scale = 1, choices = c(2,3), var.scale = 1, ellipse = TRUE,circle = TRUE, groups= countryGender[,1])
+dev.off()
+
+df_hiFreq_country1 = filter(df_hiFreq, country == 'Country001')
+country1PCA = prcomp(df_hiFreq_country1[,-34], center = T, scale.=T)
+ggbiplot(country1PCA, obs.scale = 1, var.scale = 1, ellipse = TRUE,circle = TRUE)

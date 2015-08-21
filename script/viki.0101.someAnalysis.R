@@ -55,11 +55,11 @@ quantile(hiScore$totalScore, seq(0,1,0.05)) %>% sapply(function(value) { filter(
 
 hiScoreVideo <- subset(user_video_nocast, user_id %in% unique(hiScore$user_id))
 
-##calculating Freq
+  ##calculating Freq
 hiScoreByFreq <-  hiScoreVideo %>% group_by(user_id) %>% summarise(freq = n(), totalScore = sum(score), country = unique(country), gender = unique(gender))
 quantile(hiScoreByFreq$freq, seq(0,1,0.05)) 
 
-##making different df by Freq (95%ile & above; 65-95 %ile; < 65%ile)
+  ##making different df by Freq (95%ile & above; 65-95 %ile; < 65%ile)
 
 hiScoreHiFreq <- subset(hiScoreByFreq, freq >= 40)
 hiScoreMoFreq <- subset(hiScoreByFreq, freq >= 20 & freq <40)
