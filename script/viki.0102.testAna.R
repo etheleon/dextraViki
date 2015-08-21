@@ -22,7 +22,8 @@ mergedVideo <- merge(videos_casts,
 user_video_nocast$user_id %<>% as.factor
 
 user_score <- user_video_nocast %>% group_by(user_id) %>% dplyr::summarize
-totalScore = sum(score))
+
+totalScore = sum(score)
 uu = merge(user_score, users)
 
 gender = gender, user_country = country) %>% arrange(desc(totalScore)) %>% head
