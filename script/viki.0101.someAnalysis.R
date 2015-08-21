@@ -50,7 +50,20 @@ quantile(hiScore$totalScore, c(0.5,0.7,0.75,0.8,0.9,0.95,0.98,1))
 #(these values are cumulative, rest calculation is done in excel)
 quantile(hiScore$totalScore, seq(0,1,0.05)) %>% sapply(function(value) { filter(hiScore, totalScore < value) %>% summarise(val = value, totalfreq = sum(freq), us = length(unique(user_id))) }, simplify=F) %>% do.call(rbind,.) %>% mutate(totalfreq/us)
 
+#analysis for HiScoreUsers*****************************************
+## hiScore Video Details:
 
+hiScoreVideo <- subset(user_video_nocast, user_id %in% unique(hiScore$user_id))
+
+##calculating Freq
+hiScoreByFreq <-  hiScoreVideo %>% group_by(user_id) %>% summarise(freq = n(), totalScore = sum(score), country = unique(country), gender = unique(gender))
+quantile(hiScoreByFreq$freq, seq(0,1,0.05)) 
+
+##making different df by Freq (95%ile & above; 65-95 %ile; < 65%ile)
+
+hiScoreHiFreq <- subset(hiScoreByFreq, freq >= 40)
+hiScoreMoFreq <- subset(hiScoreByFreq, freq >= 20 & freq <40)
+hiScoreLowFreq <- subset(hiScoreByFreq, freq < 20)
 
  ##nolonger valid analysis - kept for syntax
 hiFreqUsers %>% group_by(country) %>% summarise(freq = n(), usersByCountry= length(unique(user_id))) %>% arrange(desc(freq))
