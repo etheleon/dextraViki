@@ -3,24 +3,28 @@
 userdetails_all <- merge(behave, users, by="user_id", all.x=TRUE)
 
 #Analysis of Userdetails_all:
-#   behave df has 4,881,883 records with 753,272 unique user_id's belonging to 228 countries(There is no NONE value for country)
+  #   behave df has 4,881,883 records with 753,272 unique user_id's belonging to 228 countries
+  #   (There is no NONE value for country)
 
 #Merge Userdetails with video details (except the casts)
 user_video_nocast <- merge(userdetails_all, videos_attributes, by="video_id", all.x=TRUE)
 
 #group the users by Score country and gender
-uu2 <- user_video_nocast %>% group_by(user_id) %>% summarise(totalScore = sum(score),freq = n(), country = unique(country), gender = unique(gender)) %>% arrange(desc(totalScore))
+uu2 <- user_video_nocast %>% group_by(user_id) %>% 
+          summarise(totalScore = sum(score),freq = n(), country = unique(country), 
+              gender = unique(gender)) %>% arrange(desc(totalScore))
 
 #HiScore users include everyone in the top 20%tile as per Score. They have 60% of total views
-#make a subset of the highscore users as in uu3 (have all user info for high score users - top 20% (with 60% of views)
-hiScore<- subset(uu2, totalScore >= 20)
+#Hi Score Users are Users with Score >= 20
 
-#analysis for HiScoreUsers
-  ## hiScore Video Details:
+hiScore<- subset(uu2, totalScore >= 20)
+   ## hiScore Video Details:
 hiScoreVideo <- subset(user_video_nocast, user_id %in% unique(hiScore$user_id))
 
-    ##calculating Freq
-hiScoreByFreq <-  hiScoreVideo %>% group_by(user_id) %>% summarise(freq = n(), totalScore = sum(score), country = unique(country), gender = unique(gender))
+    ##Segmenting High Score Users by Frequency
+hiScoreByFreq <-  hiScoreVideo %>% group_by(user_id) %>% 
+       summarise(freq = n(), totalScore = sum(score), 
+          country = unique(country), gender = unique(gender))
 quantile(hiScoreByFreq$freq, seq(0,1,0.05)) 
  
 ##making different df by Freq (95%ile & above; 65-95 %ile; < 65%ile)
@@ -29,21 +33,63 @@ hiScoreHiFreq <- subset(hiScoreByFreq, freq >= 40)
 hiScoreMoFreq <- subset(hiScoreByFreq, freq >= 20 & freq <40)
 hiScoreLowFreq <- subset(hiScoreByFreq, freq < 20)
 
-##highFreq User video Details
-hiScoreHiFreq %>% group_by(country) %>% summarise(CountryFreq = sum(freq), CountryScore = sum(totalScore), f=sum(gender=="f"),m=sum(gender=="m"), o=sum(gender=="o"), N=sum(gender=="None"), total = n())%>% arrange(desc(CountryFreq)) %>% head(n=15)
+  # with video details
+hiScHiFreqVideo <- subset(hiScoreVideo, hiScoreVideo$user_id %in% hiScoreHiFreq$user_id)
+hiScMoFreqVideo <- subset(hiScoreVideo, hiScoreVideo$user_id %in% hiScoreMoFreq$user_id)
+hiScLowFreqVideo <- subset(hiScoreVideo, hiScoreVideo$user_id %in% hiScoreLowFreq$user_id)
 
 ##Ranking 
-    ##Videos by Views
-  hiScHiFreqVideo %>% group_by(video_id) %>% summarise(totalviews= n(), Score1views= sum(score == "1")/n(), Score2views = sum(score=="2")/n(), Score3views = sum(score=="3")/n() )%>% arrange(desc(totalviews))
+  #*created a new variable Score_new with levels - 1,2,3, 4 (for mv_ratio <20, >=20 & <50, >=50 & <80, >=80)
+dff = hiScoreVideo %>% 
+  transmute(mv_ratio = mv_ratio, video_id = video_id, user_id = user_id, 
+            Score1 = (mv_ratio < 20)*1, 
+            Score2 = (mv_ratio >= 20 & mv_ratio <50)*1, 
+            Score3 = (mv_ratio >= 50 & mv_ratio < 80)*1, 
+            Score4 = (mv_ratio >= 80)*1) 
+##>>>some issue with dff. If we print head we see that for column score1 mv_ratio's are mentioned again 
+ 
+ %>%gather(scoreType, value, -video_id, -user_id, -mv_ratio)
 
-  #Ranking (based on avg Score) BUT IT SHOULD ALSO INCLUDE FREQUENCY! 
-  hiScHiFreqVideo %>% group_by(video_id) %>% summarise(totalviews= n(), Score1views= sum(score == "1")/n(), Score2views = sum(score=="2")/n(), Score3views = sum(score=="3")/n(), Rank = sum(score)/n() )%>% group_by("totalviews")%>% head()
-##seeing country wise behaviour for the top countries
+dff$scoreType = factor(dff$scoreType, labels=c("1", "2", "3", "4"))
+dff$scoreType %<>% as.character %>% as.integer
+##>>>check number of rows in dff and hiScoreVideo should be the same but it isnt! so some issue here!!
+    
+#merging with df:hiScHiFreqVideo, Movideo, LowVideo
+hiScoreVideo_new <- merge(hiScoreVideo, dff, 
+                       by= c("user_id","video_id",all=TRUE)
+
+  #**NEW RANKING CODE
+  hiScHiFreqRank <- hiScHiFreqVideo %>% group_by(video_id) %>% 
+    summarise(totalviews= n(), 
+    Score1views= sum(Score_new == "1")/n(), 
+    Score2views = sum(Score_new=="2")/n(), 
+    Score3views = sum(Score_new=="3")/n(), 
+    Ranking = (Score1views*1+Score2views*2+Score3views*3)*(Score2views+Score3views)*totalviews )
+  %>% arrange(desc(Ranking)) %>% arrange(desc(Ranking))
+ 
+  
+  ##Plot
+
+## copy from Plotscript uploaded in R
+  
+  
+  
+  
+# *********************************************************************** 
+  ##seeing country wise behaviour for the top countries
+  
+  ## pattern by Country of User
+hiScoreHiFreq %>% group_by(country) %>% 
+    summarise(CountryFreq = sum(freq), CountryScore = sum(totalScore), 
+              f=sum(gender=="f"),m=sum(gender=="m"), o=sum(gender=="o"), N=sum(gender=="None"),
+              total = n())%>% arrange(desc(CountryFreq)) %>% head(n=1)
+
 subset(hiScHiFreqVideo, country == "Country001") %>% group_by(origin_country, gender) %>% summarise(totalScore = sum(score)) %>% ggplot(aes(reorder(origin_country, totalScore), totalScore))+geom_boxplot()+ aes(color = gender)
 
 ##hiScoreHiFreq pattern by gender and score & freq
 hiScoreHiFreq %>% group_by(country) %>% summarise(CountryFreq = sum(freq), CountryScore = sum(totalScore), f=sum(gender=="f"),m=sum(gender=="m"), o=sum(gender=="o"), N=sum(gender=="None"), total = n())%>% arrange(desc(CountryFreq)) %>% head(n=15)
 
+#**********************************************************************
 #freq Score and User Profiles by Country ***** Results
 country CountryFreq CountryScore    f   m  o    N total
 1  Country001      184456       353014 1777 335 10 1582  3704
@@ -81,3 +127,6 @@ subset(hiScHiFreqVideo, country == "Country001") %>% group_by(origin_country, ge
 > dev.off()
 
 
+##Introduce new Score Levels - 1,2,3,4
+
+##**Merge with HiScHiFreqVideo
