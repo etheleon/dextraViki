@@ -40,6 +40,7 @@ dff2 = dff[,-1]
 colnames(dff2) = c(genres, "country", "gender")
 
 hiFreqPCA = prcomp(dff2[, 1:33], center = T, scale.=T)
+hiFreqPCA2 = PCA(dff2[, 1:33],  scale.unit=T, graph =T)
 library(ggbiplot)
 pdf("../out/viki.0102.hiFreq.pdf", w=20, h=20)
 plot(hiFreqPCA, type="l")

@@ -5,7 +5,7 @@ load("../data/data.Rdata")
 library(parallel)
 library(magrittr)
 library(dplyr)
-library(ggbiplot)
+#library(ggbiplot)
 theme_set(theme_bw())
 
 userdetails_all <- merge(behave, users, by="user_id", all.x=TRUE)
@@ -21,7 +21,7 @@ mergedVideo <- merge(videos_casts,
 #video_behave = merge(mergedVideo, behave, by="video_id", all=T)
 user_video_nocast$user_id %<>% as.factor
 
-user_score <- user_video_nocast %>% group_by(user_id) %>% dplyr::summarize
+user_score <- user_video_nocast %>% group_by(user_id) %>% summarise(totalScore = sum(score)) %>% arrange(desc(totalScore))
 
 totalScore = sum(score)
 uu = merge(user_score, users)
@@ -213,5 +213,6 @@ plot(malesPCA, type="l")
 dev.off()
 
 df_hiFreq_country1 = filter(df_hiFreq, country == 'Country001')
+
 country1PCA = prcomp(df_hiFreq_country1[,-34], center = T, scale.=T)
 ggbiplot(country1PCA, obs.scale = 1, var.scale = 1, ellipse = TRUE,circle = TRUE)
