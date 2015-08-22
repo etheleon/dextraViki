@@ -7,7 +7,8 @@ userdetails_all <- merge(behave, users, by="user_id", all.x=TRUE)
   #   (There is no NONE value for country)
 
 #Merge Userdetails with video details (except the casts)
-user_video_nocast <- merge(userdetails_all, videos_attributes, by="video_id", all.x=TRUE)
+user_video_nocast <- merge(userdetails_all, videos_attributes, 
+                           by="video_id", all.x=TRUE)
 
 #group the users by Score country and gender
 uu2 <- user_video_nocast %>% group_by(user_id) %>% 
@@ -23,8 +24,8 @@ hiScoreVideo <- subset(user_video_nocast, user_id %in% unique(hiScore$user_id))
 
     ##Segmenting High Score Users by Frequency
 hiScoreByFreq <-  hiScoreVideo %>% group_by(user_id) %>% 
-       summarise(freq = n(), totalScore = sum(score), 
-          country = unique(country), gender = unique(gender))
+                  summarise(freq = n(), totalScore = sum(score), 
+                     country = unique(country), gender = unique(gender))
 quantile(hiScoreByFreq$freq, seq(0,1,0.05)) 
  
 ##making different df by Freq (95%ile & above; 65-95 %ile; < 65%ile)
