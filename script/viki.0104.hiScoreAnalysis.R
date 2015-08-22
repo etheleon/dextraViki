@@ -11,7 +11,7 @@ user_video_nocast <- merge(userdetails_all, videos_attributes, by="video_id", al
 #group the users by Score country and gender
 uu2 <- user_video_nocast %>% group_by(user_id) %>% summarise(totalScore = sum(score),freq = n(), country = unique(country), gender = unique(gender)) %>% arrange(desc(totalScore))
 
-
+#HiScore users include everyone in the top 20%tile as per Score. They have 60% of total views
 #make a subset of the highscore users as in uu3 (have all user info for high score users - top 20% (with 60% of views)
 hiScore<- subset(uu2, totalScore >= 20)
 
@@ -32,6 +32,12 @@ hiScoreLowFreq <- subset(hiScoreByFreq, freq < 20)
 ##highFreq User video Details
 hiScoreHiFreq %>% group_by(country) %>% summarise(CountryFreq = sum(freq), CountryScore = sum(totalScore), f=sum(gender=="f"),m=sum(gender=="m"), o=sum(gender=="o"), N=sum(gender=="None"), total = n())%>% arrange(desc(CountryFreq)) %>% head(n=15)
 
+##Ranking 
+    ##Videos by Views
+  hiScHiFreqVideo %>% group_by(video_id) %>% summarise(totalviews= n(), Score1views= sum(score == "1")/n(), Score2views = sum(score=="2")/n(), Score3views = sum(score=="3")/n() )%>% arrange(desc(totalviews))
+
+  #Ranking (based on avg Score) BUT IT SHOULD ALSO INCLUDE FREQUENCY! 
+  hiScHiFreqVideo %>% group_by(video_id) %>% summarise(totalviews= n(), Score1views= sum(score == "1")/n(), Score2views = sum(score=="2")/n(), Score3views = sum(score=="3")/n(), Rank = sum(score)/n() )%>% group_by("totalviews")%>% head()
 ##seeing country wise behaviour for the top countries
 subset(hiScHiFreqVideo, country == "Country001") %>% group_by(origin_country, gender) %>% summarise(totalScore = sum(score)) %>% ggplot(aes(reorder(origin_country, totalScore), totalScore))+geom_boxplot()+ aes(color = gender)
 
