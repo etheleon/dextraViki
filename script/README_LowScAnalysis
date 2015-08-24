@@ -1,0 +1,30 @@
+Low Score Users:
+Unique Users: 600469
+
+behaviour analysis
+a. understanding how many videos users watched and what is the avg score/video/user
+The avg Score is  ~ 1-2
+
+b. Did the user watch the same genre video or did he experiment with different genres
+made a dataset to understand that - user_id, #genres_watched, freq, #series_watched, totalScore
+
+Frequency  no_Users	  Avg_TotalScore/User  	AvgScore/(view*User)
+1	            212438	1.878713	      1.878713
+2	            110603	3.808938	      1.904469
+3	            72617	  5.779267	      1.926422333
+4	            52640	  7.789039	      1.94725975
+5	            40897	  9.810108	      1.9620216
+6	            32972	  11.816147	      1.969357833
+7	            26827	  13.54885	      1.93555
+8	            19813	  14.751527	      1.843940875
+9	            13410	  15.725578	      1.747286444
+10	          8504	  16.298683	      1.6298683
+11	          4750	  16.784632	      1.525875636
+12	          2645	  17.153875	      1.429489583
+13	          1284	  17.479751	      1.344596231
+14	          626	    17.662939	      1.2616385
+15          	266	    18	            1.2
+16          	113	    18.132743	      1.133296438
+17          	43	    18.465116	      1.086183294
+18          	14	    18.5	          1.027777778
+19	          7	      19	            1
