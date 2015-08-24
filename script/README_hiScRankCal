@@ -1,0 +1,29 @@
+ReadMe for Rankings
+
+Final Script: viki.0105.HiScoreRankAnalysis.R
+Final Output File: videoranksHiScore
+
+To develop Rankings for Videos
+
+1)Logic of Ranking
+Rank = f(Score, frequency)
+Score -> represents how much the video was watched
+Frequency -> how many people watched the video
+
+2) Methodology
+
+a. Take all HighScore Viewers (top 20percentile with scores from [20 to 224])
+b. Assigned a new scoring system based on 
+    Score 1: mv_ratio < 20
+    Score 2: mv_Ratio >=20 & mv_ratio < 50
+    Score 3: mv_ratio >=50 & mv_ratio <80
+    Score 4: mv_ratio >=80
+    Logic: videos watched > 50% (in duration) are likely to be more interesting as compared to videos watched < 50% (duration)
+c. calculate Ranks:
+    sigma(weight*#views for each score group)* (views with score>=3)
+    = ( %views(Score1)*1 +%views(Score2)*2 + %views(Score3)*3 + %views(Score4)*4 ) * (#views(Score3 + Score4))
+
+
+Please Note:
+1) In Ranking calculation the weighted score is further multiplied by #score3&4 views to give more importance to the longer views
+2) we have compared teh rankings calculated for the entire pool of highScore Users and separately for HighScoreHifrequency Users and they were almost similar. Hence the ranks calculated overall were taken.
