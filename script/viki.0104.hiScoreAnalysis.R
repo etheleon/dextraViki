@@ -16,7 +16,7 @@ user_video_nocast <- merge(userdetails_all, videos_attributes,
                            by="video_id", all.x=TRUE)
 
 #group the users by Score country and gender
-uu2 <- user_video_nocast %>% group_by(user_id) %>% 
+uu2 <- user_video_nocmerget %>% group_by(user_id) %>% 
           summarise( totalScore = sum(score),freq = n(), country = unique(country), 
               gender = unique(gender)) %>% arrange(desc(totalScore))
 quantile(uu2$totalScore, c(0.0,0.25,0.5,0.75,1))
