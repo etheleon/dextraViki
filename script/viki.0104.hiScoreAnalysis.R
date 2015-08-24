@@ -61,7 +61,7 @@ hiScHiFreqVideo <- subset(hiScoreVideo_new, hiScoreVideo$user_id %in% hiScoreHiF
 hiScMoFreqVideo <- subset(hiScoreVideo_new, hiScoreVideo$user_id %in% hiScoreMoFreq$user_id)
 hiScLowFreqVideo <- subset(hiScoreVideo_new, hiScoreVideo$user_id %in% hiScoreLowFreq$user_id)
 
-  #*** RANKING CODE (based on the new scoring scheme - scoreNew)
+#*** RANKING CODE (based on the new scoring scheme - scoreNew)
   hiScHiFreqRankNew <- hiScHiFreqVideo %>% group_by(video_id) %>% 
     summarise(
       totalviews= n(), 
@@ -71,24 +71,13 @@ hiScLowFreqVideo <- subset(hiScoreVideo_new, hiScoreVideo$user_id %in% hiScoreLo
     scoreNew4views = sum(scoreNew=="4")/n(), 
     RankingNew = ((scoreNew1views*1+scoreNew2views*2+scoreNew3views*3+ scoreNew4views*4)*
                   (scoreNew3views+scoreNew4views)*totalviews)) %>% arrange(desc(RankingNew))
-    
-    hiScHiFreqRankOld <- hiScHiFreqVideo %>% group_by(video_id) %>% 
-      summarise(
-        totalviews= n(), 
-    score1views = sum(score == "1")/n(),
-    score2views = sum(score=="2")/n(),
-    score3views = sum(score=="3")/n(),
-    RankingOld = ((score1views*1+score2views*2+score3views*3)*
-                    (score2views+score3views)*totalviews))%>% arrange(desc(RankingOld))
   
-                                                                                                                                                              
- 
-  
+                                                                                                                                                
   ##Plot both old and new rankings and score views
     
     hiScHiFreqRankNew <- merge(hiScHiFreqRankNew, hiScHiFreqRankOld %>% select(video_id, RankingOld) , by = c("video_id"), all.x = TRUE) 
 
-## Plot for New Ranking (with a line for Old Ranking as well)
+  ## Plot for New Ranking (with a line for Old Ranking as well)
     
     hiScHiFreqRankNew %<>% arrange(desc(RankingNew))
     hiScHiFreqRankNew$video_id = factor(hiScHiFreqRankNew$video_id, levels = as.character(hiScHiFreqRankNew$video_id))
@@ -107,7 +96,16 @@ hiScLowFreqVideo <- subset(hiScoreVideo_new, hiScoreVideo$user_id %in% hiScoreLo
     ylab("Totalviews")+ggtitle("New ranking")
   dev.off() 
   
-  ## Plot for Old Ranking** No Need to run til you want to look at the details
+## Plot for Old Ranking** No Need to run til you want to look at the details
+  
+  hiScHiFreqRankOld <- hiScHiFreqVideo %>% group_by(video_id) %>% 
+    summarise(
+      totalviews= n(), 
+      score1views = sum(score == "1")/n(),
+      score2views = sum(score=="2")/n(),
+      score3views = sum(score=="3")/n(),
+      RankingOld = ((score1views*1+score2views*2+score3views*3)*
+                      (score2views+score3views)*totalviews))%>% arrange(desc(RankingOld))
   
   hiScHiFreqRankOld %<>% arrange(desc(RankingOld))
   hiScHiFreqRankOld$video_id = factor(hiScHiFreqRankOld$video_id, levels = as.character(hiScHiFreqRankOld$video_id))
