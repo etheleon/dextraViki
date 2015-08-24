@@ -78,7 +78,7 @@ hiscoreRankCompare_long %>% mutate(newValue = value* totalviews) %>%
   ggplot(aes(x=video_id, y=newValue))                                 +
   geom_line(aes(group=scoreType, color=scoreType))                    +
   geom_line(data=rankDFNewOverall, inherit.aes=FALSE, aes(video_id, value/2, group=rankType, linetype=rankType), color="black",size=0.5) +
-  ylab("Totalviews")+ggtitle("New ranking")
+  ylab("Totalviews")+ggtitle("Rank for All HighScoreUsers (Overall) Vs HiScHiFreq Users ")
 dev.off() 
 
 
