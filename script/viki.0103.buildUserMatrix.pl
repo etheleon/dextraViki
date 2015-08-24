@@ -6,28 +6,21 @@ use autodie;
 use Data::Dumper;
 use Getopt::Lucid qw( :all );
 
-$|++;
 
 my %hash;
 my %hash2;
 
-my $opt = Getopt::Lucid->getopt([
-      Param("genres|g"),
-      Param("users|u"),
-      Param("table|t")
-])->validate;
+my $opt = Getopt::Lucid->getopt([Param("genres|g"),Param("users|u"),Param("table|t")])->validate;
 
 my $genre= readGenre($opt->get_genres);
 my $aLength = scalar keys $genre->%*;
 
 open my $matrixFile, "<", $opt->get_table;
 while(<$matrixFile>){
-    chomp;
-#    say $_;
+        chomp;
         my ($user, $genreString, $mv) = (split /\t/);
         my @inner                     = (0) x $aLength;
         my @astring                   = split ", ", $genreString;
-        #print for @astring#;say "\n";
         if(exists $hash{$user})
         {
            for my $singleGenre (@astring)
@@ -38,7 +31,6 @@ while(<$matrixFile>){
               }
            }
            @inner = map { $_ * $mv } @inner;
-           # say join "|", @inner;
            $hash{$user}->[$_] += $inner[$_] for 0..$aLength-1;
         }else{
            for my $singleGenre (@astring)
@@ -53,7 +45,6 @@ while(<$matrixFile>){
         }
 }
 
-
 open my $userDataFile, "<", $opt->get_users;
 while(<$userDataFile>){
    unless ($. == 1){
@@ -66,8 +57,8 @@ while(<$userDataFile>){
       }
    }
 }
-say "the country", $hash2{1}->{country};
-say "the gender", $hash2{1}->{gender};
+say "## The country", $hash2{1}->{country};
+say "## The gender", $hash2{1}->{gender};
 
 foreach my $user (keys %hash)
 {
