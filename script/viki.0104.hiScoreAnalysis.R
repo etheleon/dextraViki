@@ -1,3 +1,8 @@
+load("../data/data.Rdata")
+library (magrittr)
+library (dplyr)
+library (tidyr)
+library (ggplot2)
 
 #Merged behave and users dataframe
 userdetails_all <- merge(behave, users, by="user_id", all.x=TRUE)
@@ -12,19 +17,36 @@ user_video_nocast <- merge(userdetails_all, videos_attributes,
 
 #group the users by Score country and gender
 uu2 <- user_video_nocast %>% group_by(user_id) %>% 
-          summarise(totalScore = sum(score),freq = n(), country = unique(country), 
+          summarise( totalScore = sum(score),freq = n(), country = unique(country), 
               gender = unique(gender)) %>% arrange(desc(totalScore))
+quantile(uu2$totalScore, c(0.0,0.25,0.5,0.75,1))
 
 #HiScore users include everyone in the top 20%tile as per Score. They have 60% of total views
 #Hi Score Users are Users with Score >= 20
 
 hiScore<- subset(uu2, totalScore >= 20)
-   ## hiScore Video Details:
 hiScoreVideo <- subset(user_video_nocast, user_id %in% unique(hiScore$user_id))
 
+#*created a new variable scoreType with levels - 1,2,3, 4 (for mv_ratio <20, >=20 & <50, >=50 & <80, >=80)
+dff = hiScoreVideo %>% 
+  transmute(mv_ratio = mv_ratio, video_id = video_id, user_id = user_id, 
+            Score1 = (mv_ratio < 20 )*1,
+            Score2 = (mv_ratio >= 20 & mv_ratio <50)*1,
+            Score3 = (mv_ratio >= 50 & mv_ratio < 80)*1, 
+            Score4 = (mv_ratio >= 80)*1) %>% gather(scoreType, value, -video_id, -user_id, -mv_ratio)
+dff %<>% filter(value > 0 )
+dff$scoreType = factor(dff$scoreType, labels=c("1", "2", "3", "4"))
+dff$scoreType %<>% as.character %>% as.integer
+dff %<>% select(-value) #remove a column
+colnames(dff)[4] = "scoreNew" #rename a col
+
+#merging with dff to get new score variables 
+hiScoreVideo_new <- merge(hiScoreVideo, dff, 
+                          by= c("user_id","video_id", "mv_ratio"),all=TRUE)
+
     ##Segmenting High Score Users by Frequency
-hiScoreByFreq <-  hiScoreVideo %>% group_by(user_id) %>% 
-                  summarise(freq = n(), totalScore = sum(score), 
+hiScoreByFreq <-  hiScoreVideo_new %>% group_by(user_id) %>% 
+                  summarise(freq = n(), totalScore = sum(score), totalScoreNew = sum(scoreNew),
                      country = unique(country), gender = unique(gender))
 quantile(hiScoreByFreq$freq, seq(0,1,0.05)) 
  
@@ -35,48 +57,76 @@ hiScoreMoFreq <- subset(hiScoreByFreq, freq >= 20 & freq <40)
 hiScoreLowFreq <- subset(hiScoreByFreq, freq < 20)
 
   # with video details
-hiScHiFreqVideo <- subset(hiScoreVideo, hiScoreVideo$user_id %in% hiScoreHiFreq$user_id)
-hiScMoFreqVideo <- subset(hiScoreVideo, hiScoreVideo$user_id %in% hiScoreMoFreq$user_id)
-hiScLowFreqVideo <- subset(hiScoreVideo, hiScoreVideo$user_id %in% hiScoreLowFreq$user_id)
+hiScHiFreqVideo <- subset(hiScoreVideo_new, hiScoreVideo$user_id %in% hiScoreHiFreq$user_id)
+hiScMoFreqVideo <- subset(hiScoreVideo_new, hiScoreVideo$user_id %in% hiScoreMoFreq$user_id)
+hiScLowFreqVideo <- subset(hiScoreVideo_new, hiScoreVideo$user_id %in% hiScoreLowFreq$user_id)
 
-##Ranking 
-  #*created a new variable Score_new with levels - 1,2,3, 4 (for mv_ratio <20, >=20 & <50, >=50 & <80, >=80)
-dff = hiScoreVideo %>% 
-  transmute(mv_ratio = mv_ratio, video_id = video_id, user_id = user_id, 
-            Score1 = (mv_ratio < 20)*1, 
-            Score2 = (mv_ratio >= 20 & mv_ratio <50)*1, 
-            Score3 = (mv_ratio >= 50 & mv_ratio < 80)*1, 
-            Score4 = (mv_ratio >= 80)*1) 
-##>>>some issue with dff. If we print head we see that for column score1 mv_ratio's are mentioned again 
- 
- %>%gather(scoreType, value, -video_id, -user_id, -mv_ratio)
-
-dff$scoreType = factor(dff$scoreType, labels=c("1", "2", "3", "4"))
-dff$scoreType %<>% as.character %>% as.integer
-##>>>check number of rows in dff and hiScoreVideo should be the same but it isnt! so some issue here!!
+  #*** RANKING CODE (based on the new scoring scheme - scoreNew)
+  hiScHiFreqRankNew <- hiScHiFreqVideo %>% group_by(video_id) %>% 
+    summarise(
+      totalviews= n(), 
+    scoreNew1views = sum(scoreNew == "1")/n(), 
+    scoreNew2views = sum(scoreNew=="2")/n(), 
+    scoreNew3views = sum(scoreNew=="3")/n(), 
+    scoreNew4views = sum(scoreNew=="4")/n(), 
+    RankingNew = ((scoreNew1views*1+scoreNew2views*2+scoreNew3views*3+ scoreNew4views*4)*
+                  (scoreNew3views+scoreNew4views)*totalviews)) %>% arrange(desc(RankingNew))
     
-#merging with df:hiScHiFreqVideo, Movideo, LowVideo
-hiScoreVideo_new <- merge(hiScoreVideo, dff, 
-                       by= c("user_id","video_id",all=TRUE)
-
-  #**NEW RANKING CODE
-  hiScHiFreqRank <- hiScHiFreqVideo %>% group_by(video_id) %>% 
-    summarise(totalviews= n(), 
-    Score1views= sum(Score_new == "1")/n(), 
-    Score2views = sum(Score_new=="2")/n(), 
-    Score3views = sum(Score_new=="3")/n(), 
-    Ranking = (Score1views*1+Score2views*2+Score3views*3)*(Score2views+Score3views)*totalviews )
-  %>% arrange(desc(Ranking)) %>% arrange(desc(Ranking))
+    hiScHiFreqRankOld <- hiScHiFreqVideo %>% group_by(video_id) %>% 
+      summarise(
+        totalviews= n(), 
+    score1views = sum(score == "1")/n(),
+    score2views = sum(score=="2")/n(),
+    score3views = sum(score=="3")/n(),
+    RankingOld = ((score1views*1+score2views*2+score3views*3)*
+                    (score2views+score3views)*totalviews))%>% arrange(desc(RankingOld))
+  
+                                                                                                                                                              
  
   
-  ##Plot
+  ##Plot both old and new rankings and score views
+    
+    hiScHiFreqRankNew <- merge(hiScHiFreqRankNew, hiScHiFreqRankOld %>% select(video_id, RankingOld) , by = c("video_id"), all.x = TRUE) 
 
-## copy from Plotscript uploaded in R
+## Plot for New Ranking (with a line for Old Ranking as well)
+    
+    hiScHiFreqRankNew %<>% arrange(desc(RankingNew))
+    hiScHiFreqRankNew$video_id = factor(hiScHiFreqRankNew$video_id, levels = as.character(hiScHiFreqRankNew$video_id))
+    
+
+  hiScHiFreqRankNew_long = hiScHiFreqRankNew %>%
+    gather(scoreType, value, -video_id, -totalviews, -RankingNew, -RankingOld)
+  
+  rankDFNew = hiScHiFreqRankNew_long %>% select(video_id, RankingNew, RankingOld) %>% unique
+  rankDFNew %<>% gather(rankType, value, -video_id)
+  pdf("../out/scoreTypeRankingNEW2.pdf", w=20)
+  hiScHiFreqRankNew_long %>% mutate(newValue = value* totalviews) %>% 
+    ggplot(aes(x=video_id, y=newValue))                                 +
+    geom_line(aes(group=scoreType, color=scoreType))                    +
+    geom_line(data=rankDFNew, inherit.aes=FALSE, aes(video_id, value/2, group=rankType, linetype=rankType), color="black",size=0.5) +
+    ylab("Totalviews")+ggtitle("New ranking")
+  dev.off() 
+  
+  ## Plot for Old Ranking** No Need to run til you want to look at the details
+  
+  hiScHiFreqRankOld %<>% arrange(desc(RankingOld))
+  hiScHiFreqRankOld$video_id = factor(hiScHiFreqRankOld$video_id, levels = as.character(hiScHiFreqRankOld$video_id))
+  
+  hiScHiFreqRankOld_long = hiScHiFreqRankOld %>%
+    gather(scoreType, value, -video_id, -totalviews, -RankingOld)
+  
+  rankDFOld = hiScHiFreqRankOld_long %>% select(video_id, RankingOld) %>% unique
+  
+  pdf("../out/scoreTypeRankingOLD.pdf", w=20) 
+  hiScHiFreqRankOld_long %>% mutate(newValue = value* totalviews) %>% 
+    ggplot(aes(x=video_id, y=newValue))                                 +
+    geom_line(aes(group=scoreType, color=scoreType))                    +
+    geom_line(data=rankDFOld, inherit.aes=FALSE, aes(video_id, RankingOld/2, group=1), color="black", size=1.5) +
+    ylab("Totalviews")+ggtitle("Old ranking")
+  dev.off() 
   
   
-  
-  
-# *********************************************************************** 
+# ********************************NO NEED***************************************
   ##seeing country wise behaviour for the top countries
   
   ## pattern by Country of User
