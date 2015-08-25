@@ -1,0 +1,5 @@
+Users divided into two groups:
+  1) HiScore (Score>=20)  Dataset:  hiScorePCA (../data)
+  2) LowScore (Score < 20) Dataset: lowScorePCA (.../data)
+  
+Dataset details: (User_id, genres, scoreNew)
