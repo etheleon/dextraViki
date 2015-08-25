@@ -8,47 +8,34 @@ use Getopt::Lucid qw( :all );
 
 my %hash;
 my %hash2;
-
+my %userViews;
 my $opt = Getopt::Lucid->getopt(
   [Param("genres|g")->default("data/genresList"),
   Param("users|u")->default("data/User_attributes.csv"),
-  Param("table|t")->default("out/hiScoreHiFreq_genreInfo.txt")
-  ])->validate;
+  Param("table|t")->default("out/hiScoreHiFreq_genreInfo.txt"),
+  Param("threshold|h")->default("50")
+])->validate;
 
-#read genreInfomation
 my $genre = readGenre($opt->get_genres);
+my $threshold = $opt->get_threshold;
+my $length = scalar $genre->@*-1;
 
-#readMatrix information
-my $aLength = scalar keys $genre->%*;
 open my $matrixFile, "<", $opt->get_table;
-while(<$matrixFile>){
-        chomp;
-        my ($user, $genreString, $mv) = (split /\t/);
-        my @inner                     = (0) x $aLength;
-        my @astring                   = split ", ", $genreString;
-        if(exists $hash{$user})
-        {
-           for my $singleGenre (@astring)
-           {
-              for my $key (keys $genre->%*)
-              {
-                $inner[$key eq $singleGenre ? $genre->{$key} : 0] = 1
-              }
-           }
-           @inner = map { $_ * $mv } @inner;
-           $hash{$user}->[$_] += $inner[$_] for 0..$aLength-1;
-        }else{
-           for my $singleGenre (@astring)
-           {
-              for my $key (keys $genre->%*)
-              {
-                $inner[$key eq $singleGenre ? $genre->{$key} : 0] = 1
-              }
-           }
-           $hash{$user} = \@inner;
-        }
+while(<$matrixFile>)
+{
+   chomp;
+   my ($user, $genreString, $mv) = (split /\t/);
+
+   my $inner = loopGenre($genreString, $genre, $mv, $user);
+   if(exists $hash{$user})
+   {
+      $hash{$user}->[$_] += $inner->[$_] for 0..$length
+   }else
+   {
+      $hash{$user} = $inner;
+   }
 }
-#
+
 #Feeding in user details
 open my $userDataFile, "<", $opt->get_users;
 while(<$userDataFile>){
@@ -62,23 +49,48 @@ while(<$userDataFile>){
       }
    }
 }
-say "## The country", $hash2{1}->{country};
-say "## The gender", $hash2{1}->{gender};
 
 #print header
-say join "\t", "user", keys $genre->%*, "country", "gender";
+say join "\t", "user", $genre->@*, "country", "gender";
 foreach my $user (keys %hash)
 {
     say join "\t", $user, $hash{$user}->@*,$hash2{$user}->{country}, $hash2{$user}->{gender};
 }
+
+
 
 sub readGenre ($filePath)
 {
   open my $input, "<", $filePath;
   my @genre = <$input>;
   chomp @genre;
-  return { map { $genre[$_-1] => $_ } 1..scalar @genre}
+  return \@genre
 }
+
+=pod
+ readGenre reads in the genrelist,
+ stores and returns genres as an array
+=cut
+
+sub loopGenre ($genreString, $genre, $mv, $user){
+
+  my @watchedGenres = split ", ", $genreString;
+  my $aLength = scalar keys $genre->@*;
+  my @inner                     = (0) x $aLength;
+  for my $viewedGenre (@watchedGenres){
+     my $i = 0;
+     for my $atomGenre ($genre->@*){
+        $userViews{$user}->{$atomGenre}++ if $mv >= $threshold;
+        $inner[$i] = $mv if $atomGenre eq $viewedGenre;
+        $i++;
+     }
+   }
+   return \@inner
+}
+
+=pod
+  \code{loopGenre} takes the genre string and calculate
+=cut
 
 =pod
  =head options
