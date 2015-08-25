@@ -1,70 +1,55 @@
 #!/usr/bin/env perl
 
-use Modern::Perl '2015';
-use experimental qw/signatures postderef/;
-use autodie;
-use Data::Dumper;
-use Getopt::Lucid qw( :all );
+use v5.8;
 
-my %hash;
-my %hash2;
+use strict;
+use warnings;
+
+use Getopt::Long;
+
+my $genres = "data/genresList";
+my $users  = "data/User_attributes.csv";
+my $table  = "out/hiScoreHiFreq_genreInfo.txt";
+my $threshold = 50;
+my %userString;
 my %userViews;
-my $opt = Getopt::Lucid->getopt(
-  [Param("genres|g")->default("data/genresList"),
-  Param("users|u")->default("data/User_attributes.csv"),
-  Param("table|t")->default("out/hiScoreHiFreq_genreInfo.txt"),
-  Param("threshold|h")->default("50")
-])->validate;
 
-my $genre = readGenre($opt->get_genres);
-my $threshold = $opt->get_threshold;
-my $length = scalar $genre->@*-1;
+GetOptions(
+    "genres=s"    => \$genres,
+    "users=s"     => \$users,
+    "table=s"     => \$table,
+    "threshold=i" => \$threshold
+) or die("Error in command line arguments\n");
 
-open my $matrixFile, "<", $opt->get_table;
+my $genre       = readGenre($genres);
+my $userDetails = usrDetails($users);
+
+#Parse genres
+open my $matrixFile, "<", $table or die "cannot open $table $!\n";
 while(<$matrixFile>)
 {
    chomp;
    my ($user, $genreString, $mv) = (split /\t/);
-
-   my $inner = loopGenre($genreString, $genre, $mv, $user);
-   if(exists $hash{$user})
-   {
-      $hash{$user}->[$_] += $inner->[$_] for 0..$length
-   }else
-   {
-      $hash{$user} = $inner;
+   my $inner                     = loopGenre($genreString, $genre, $mv, $user);
+   if(exists $userString{$user}){
+       $userString{$user}->[$_] += $inner->[$_] for 0..$#{$inner}
+   }else{
+       $userString{$user} = $inner
    }
 }
 
-#Feeding in user details
-open my $userDataFile, "<", $opt->get_users;
-while(<$userDataFile>){
-   unless ($. == 1){
-      chomp;
-      my ($userID, $country, $gender) =  split(/,/);
-      $hash2{$userID} =
-      {
-         country => $country,
-         gender  => $gender
-      }
-   }
-}
+#Print Matrix
+print join "\t", "user", "country", "gender", @{$genre}, "\n"; #HEADER
+print join "\t", $_, $userDetails->{$_}->{country}, $userDetails->{$_}->{gender}, @{ $userString{$_} }, "\n" for keys %userString;
 
-#print header
-say join "\t", "user", $genre->@*, "country", "gender";
-foreach my $user (keys %hash)
+sub readGenre
 {
-    say join "\t", $user, $hash{$user}->@*,$hash2{$user}->{country}, $hash2{$user}->{gender};
-}
-
-
-
-sub readGenre ($filePath)
-{
-  open my $input, "<", $filePath;
-  my @genre = <$input>;
-  chomp @genre;
-  return \@genre
+    my ($filePath) = @_;
+    open my $input, "<", $filePath or die "cannot open $filePath $!\n";
+    my @genre = <$input>;
+    chomp @genre;
+    close $input;
+    return \@genre
 }
 
 =pod
@@ -72,25 +57,42 @@ sub readGenre ($filePath)
  stores and returns genres as an array
 =cut
 
-sub loopGenre ($genreString, $genre, $mv, $user){
-
-  my @watchedGenres = split ", ", $genreString;
-  my $aLength = scalar keys $genre->@*;
-  my @inner                     = (0) x $aLength;
-  for my $viewedGenre (@watchedGenres){
-     my $i = 0;
-     for my $atomGenre ($genre->@*){
-        $userViews{$user}->{$atomGenre}++ if $mv >= $threshold;
-        $inner[$i] = $mv if $atomGenre eq $viewedGenre;
-        $i++;
-     }
-   }
-   return \@inner
+sub loopGenre {
+    my ($genreString, $genre, $mv, $user) = @_;
+    my @watchedGenres                     = split ", ", $genreString;
+    my @inner                             = (0) x $#{$genre};
+    for my $viewedGenre (@watchedGenres){
+        my $i = 0;
+        for my $atomGenre (@{ $genre }){
+            $userViews{$user}->{$atomGenre}++ if $mv >= $threshold;
+            $inner[$i] = $mv if $atomGenre eq $viewedGenre;
+            $i++;
+        }
+    }
+    return \@inner
 }
 
 =pod
   \code{loopGenre} takes the genre string and calculate
 =cut
+
+sub usrDetails{
+    my ($filePath) = @_;
+    my %UD;
+    open my $userDetails, "<", $filePath or die "cannot open $filePath$!\n";
+    while(<$userDetails>){
+        unless ($. == 1){
+            chomp;
+            my ($userID, $country, $gender) =  m/(\S+),(\S+),(\S+)/;
+            $UD{$userID} =
+            {
+                country => $country,
+                gender  => $gender
+            }
+        }
+    }
+    return \%UD;
+}
 
 =pod
  =head options
@@ -98,3 +100,23 @@ sub loopGenre ($genreString, $genre, $mv, $user){
  =head output
  the out gives the username
 =cut
+
+__END__
+#Example Input
+37      Comedy (6g), Drama (9g), Idol Drama (1038g), Romance (18g), Taiwanese Drama (1043g)     26
+37      Drama (9g), Romance (18g)       14
+37      Drama (9g), Korean Drama (23g), Medical Drama (1040g)   1
+37      Drama (9g), Korean Drama (23g), Romance (18g)   1
+37      Action & Adventure (1g), Costume & Period (25g), Drama (9g), Romance (18g)      7
+37      Drama (9g), Romance (18g)       11
+37      Action & Adventure (1g), Costume & Period (25g), Drama (9g), Korean Drama (23g) 6
+37      Entertainment (10g), Lifestyle & Variety (14g), Romance (18g), Variety Show (1044g)     1
+37      Comedy (6g), Drama (9g), Idol Drama (1038g), Korean Drama (23g), Music (17g), Romance (18g)     42
+37      Comedy (6g), Idol Drama (1038g), Korean Drama (23g), Romance (18g), SciFi & Fantasy (19g)       64
+
+#Example Output
+user    country gender  None    Action & Adventure (1g) Comedy (6g)     Drama (9g)      Idol Drama (1038g)      Romance (18g)   Taiwanese Drama (1043g) SciFi & Fantasy (19g)   Family & Kids (24g)     Korean Drama (23g)      Classics (5g)   Costume & Period (25g)  Entertainment (10g)     Lifestyle & Variety (14g)    Crime & Mystery (7g)     Biography (3g)  Variety Show (1044g)    Telenovelas (27g)       Women (1046g)   Music (17g)     Horror & Supernatural (12g)     Medical Drama (1040g)   Cartoons (4g)   Reality (1042g) Sports (20g)    Food & Cooking (1053g)  Melodrama (1041g)       Thriller & Suspense (26g)       Anime (2g)   Historical (1037g)       Documentary (8g)        Bollywood (1054g)       Independent (13g)
+91      Country001      None    90      2       815     1385    569     1572    120     211     4       1953    0       124     6       0       282     116     0       0       139     191     0       233     0       0       0       38      244     213     0       105     0       0
+37      Country016      None    0       440     485     1918    463     1888    26      465     40      1728    0       245     1       1       0       0       1       137     0       111     0       155     0       0       0       3       100     177     0       124     0       0
+108     Country001      None    0       2       789     1218    946     1201    407     265     268     1394    4       110     7       7       181     0       7       0       0       59      103     106     0       0       0       0       165     181     0       0       0       0
+
