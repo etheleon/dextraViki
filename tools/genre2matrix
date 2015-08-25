@@ -1,0 +1,88 @@
+#!/usr/bin/env perl
+
+use Modern::Perl '2015';
+use experimental qw/signatures postderef/;
+use autodie;
+use Data::Dumper;
+use Getopt::Lucid qw( :all );
+
+my %hash;
+my %hash2;
+
+my $opt = Getopt::Lucid->getopt(
+  [Param("genres|g")->default("data/genresList"),
+  Param("users|u")->default("data/User_attributes.csv"),
+  Param("table|t")->default("out/hiScoreHiFreq_genreInfo.txt")
+  ])->validate;
+
+#read genreInfomation
+my $genre = readGenre($opt->get_genres);
+
+#readMatrix information
+my $aLength = scalar keys $genre->%*;
+open my $matrixFile, "<", $opt->get_table;
+while(<$matrixFile>){
+        chomp;
+        my ($user, $genreString, $mv) = (split /\t/);
+        my @inner                     = (0) x $aLength;
+        my @astring                   = split ", ", $genreString;
+        if(exists $hash{$user})
+        {
+           for my $singleGenre (@astring)
+           {
+              for my $key (keys $genre->%*)
+              {
+                $inner[$key eq $singleGenre ? $genre->{$key} : 0] = 1
+              }
+           }
+           @inner = map { $_ * $mv } @inner;
+           $hash{$user}->[$_] += $inner[$_] for 0..$aLength-1;
+        }else{
+           for my $singleGenre (@astring)
+           {
+              for my $key (keys $genre->%*)
+              {
+                $inner[$key eq $singleGenre ? $genre->{$key} : 0] = 1
+              }
+           }
+           $hash{$user} = \@inner;
+        }
+}
+#
+#Feeding in user details
+open my $userDataFile, "<", $opt->get_users;
+while(<$userDataFile>){
+   unless ($. == 1){
+      chomp;
+      my ($userID, $country, $gender) =  split(/,/);
+      $hash2{$userID} =
+      {
+         country => $country,
+         gender  => $gender
+      }
+   }
+}
+say "## The country", $hash2{1}->{country};
+say "## The gender", $hash2{1}->{gender};
+
+#print header
+say join "\t", "user", keys $genre->%*, "country", "gender";
+foreach my $user (keys %hash)
+{
+    say join "\t", $user, $hash{$user}->@*,$hash2{$user}->{country}, $hash2{$user}->{gender};
+}
+
+sub readGenre ($filePath)
+{
+  open my $input, "<", $filePath;
+  my @genre = <$input>;
+  chomp @genre;
+  return { map { $genre[$_-1] => $_ } 1..scalar @genre}
+}
+
+=pod
+ =head options
+ --table: usr genre string mv_ratio
+ =head output
+ the out gives the username
+=cut
