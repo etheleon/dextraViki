@@ -60,7 +60,7 @@ sub readGenre
 sub loopGenre {
     my ($genreString, $genre, $mv, $user) = @_;
     my @watchedGenres                     = split ", ", $genreString;
-    my @inner                             = (0) x $#{$genre};
+    my @inner                             = (0) x scalar @{$genre};
     for my $viewedGenre (@watchedGenres){
         my $i = 0;
         for my $atomGenre (@{ $genre }){
