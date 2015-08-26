@@ -34,17 +34,16 @@ closest <- function(latentVars, distance="euclidian", top = 5, users, behaviour,
     ranking = behaviour                                      %>%
                 group_by(video_id)                             %>%
                 summarise(count = n(), aveMV = mean(mv_ratio))
- 
-    
+    message("#calculated ranking")
     outCSV = 1:nrow(latentVars) %>% #loop through all users
         mclapply(function(rowID){
             print(rowID)
             closestUsers = users[head(order(aDist[-1,rowID]),top)+1] #we take the top 5 most similar 100 users
 
-            closestVids  =  behaviour %>% subset(user_id %in% closestUsers) %$% video_id %>% unique
+            closestVids  =  behaviour %>% filter(user_id %in% closestUsers) %$% video_id %>% unique
 
             #videos which user himself has seen
-            hisVids = behaviour %>% subset(user_id == users[rowID]) %$% video_id
+            hisVids = behaviour %>% filter(user_id == users[rowID]) %$% video_id
 
             candidates   = closestVids[which(!closestVids %in% hisVids)]
             
@@ -54,6 +53,7 @@ closest <- function(latentVars, distance="euclidian", top = 5, users, behaviour,
                 arrange(desc(count), desc(aveMV)) %>%
                 head(6)                                        %$%
                 video_id #can be optimised to search for time
+
      if(length(vidRecommend)<3){
         data.frame(user_id = character(), video_id = character())
     }else{
