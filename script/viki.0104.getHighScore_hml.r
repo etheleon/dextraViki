@@ -60,17 +60,33 @@ hiFreqPCA = prcomp(dff2[, 1:33], center = T, scale.=T)
 
 hiFreqPCA$rotation %>% rownames
 
-firstTEN  = c(1:3) %>% lapply(function(PC){
+firstTEN =
+c(1:3) %>% lapply(function(PC){
+    percVar = summary(hiFreqPCA)$importance[2,PC]
     hiFreqPCA$x[1:10,PC] %>%
-    sapply(
-           function(userLOC){
-               newLoc = userLOC * hiFreqPCA$rotation[,PC] 
-           }
-    )
+    sapply(function(userLOC) userLOC * hiFreqPCA$rotation[,PC] * percVar)
 })
 
-lapply(firstTEN, function(x) x[,1] *  )
-summary(hiFreqPCA)$importance[2, ] %>% sum
+1:10 %>% lapply(function(user) {
+    firstTEN[[1]][,user] + firstTEN[[2]][,user] + firstTEN[[3]][,user]
+})
+
+library(parallel)
+
+allDF = c(1:3) %>% mclapply(function(PC){
+    percVar = summary(hiFreqPCA)$importance[2,PC]
+    hiFreqPCA$x[,PC] %>%
+    sapply(function(userLOC) userLOC * hiFreqPCA$rotation[,PC] * percVar)
+}, mc.cores=8)
+
+userGWeight = 1:nrow(hiFreqPCA$x) %>% lapply(function(user){
+    allD[[1]][,user] + allDF[[2]][,user] + allDF[[3]][,user]
+})
+
+
+#lapply(firstTEN, function(x) x[,1] *  )
+
+#summary(hiFreqPCA)$importance[2, ] %>% sum
 #hiFreqPCA2 = PCA(dff2[, 1:33],  scale.unit=T, graph =T)
 
 #Bi-plot
