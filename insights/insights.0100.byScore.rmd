@@ -3,7 +3,7 @@ author: Wesley & Ritika
 title: Users with High Score
 ---
 
-```{r init,echo=FALSE}
+```{r init ,echo=FALSE}
 #load("../data/data.Rdata")
 library(magrittr)
 library(dplyr)
@@ -15,7 +15,7 @@ library(recommendR)
 # Exploratory Analysis
 
 There were a total of `r nrow(behave)` user behaviour records with `r length(unique(behave$user_id))` users coming from 
-`r length(unique(behave$countries))`.
+`r length(unique(users$countries))`.
 
 ```{r Big-table, cache=TRUE}
 userdetails_all     <- merge(behave, users, by="user_id", all.x=TRUE)
@@ -24,15 +24,15 @@ user_video_nocast   <- merge(userdetails_all, videos_attributes, by="video_id", 
 
 We found the total score for each user and named it `totalScore`.
 
-```{r grouping}
+```{r grouping, cache=TRUE}
 #group the users by Score country and gender
-uu2 <- user_video_nocast                %>%
-        group_by(user_id)                  %>%
+uu2 <- user_video_nocast               %>%
+        group_by(user_id)              %>%
         summarise(
             totalScore = sum(score),
             freq = n(),
             country = unique(country),
-            gender = unique(gender))       %>%
+            gender = unique(gender))   %>%
         arrange(desc(totalScore))
 ```
 
@@ -44,9 +44,8 @@ quantile(uu2$totalScore, c(0,0.25,0.5,0.75,1))
 
 | Category | Description                                                                                  |
 | ---      | ---                                                                                          |
-| HiScore  | Users >= 80 percentile (based on score). They have 60% of total views (need so suptantiate) |
+| HiScore  | Users >= 80 percentile (based on score). They have 60% of total views (need so suptantiate)  |
 | LowScore | Users < 80 percentile (based on score)                                                       |
-
 
 ## High Score Users
 
@@ -64,119 +63,173 @@ We decided to further segment the scores into 4 categories
 | 3        | 50 <= mv_ratio < 80 |
 | 4        | mv_ratio >= 80 |
 
-```{r eval=FALSE, echo=FALSE}
-dff = hiScoreVideo %>% 
-  transmute(mv_ratio = mv_ratio, video_id = video_id, user_id = user_id, 
+```{r echo=FALSE}
+dff <-  hiScoreVideo %>%
+        transmute(
+            mv_ratio = mv_ratio,
+            video_id = video_id,
+            user_id = user_id,
             Score1 = (mv_ratio < 20 )*1,
             Score2 = (mv_ratio >= 20 & mv_ratio <50)*1,
-            Score3 = (mv_ratio >= 50 & mv_ratio < 80)*1, 
-            Score4 = (mv_ratio >= 80)*1) %>% gather(scoreType, value, -video_id, -user_id, -mv_ratio)
-dff %<>% filter(value > 0 )
-dff$scoreType = factor(dff$scoreType, labels=c("1", "2", "3", "4"))
-dff$scoreType %<>% as.character %>% as.integer
-dff %<>% select(-value) #remove a column
-colnames(dff)[4] = "scoreNew" #rename a col
+            Score3 = (mv_ratio >= 50 & mv_ratio < 80)*1,
+            Score4 = (mv_ratio >= 80)*1) %>% 
+        gather(scoreType, value, -video_id, -user_id, -mv_ratio) %>% 
+        filter(value > 0 ) %>% select(-value)
+#Change scoreType to integers
 
-#merging with dff to get new score variables 
-hiScoreVideo_new <- merge(hiScoreVideo, dff, 
-                          by= c("user_id","video_id", "mv_ratio"),all=TRUE)
+        dff$scoreType %<>% factor(labels=c("1", "2", "3", "4"))
+        dff$scoreType %<>% as.character %>% as.integer
+        colnames(dff)[4] = "scoreNew" #rename a col
+#merging with dff to get new score variables
+hiScoreVideo_new <- merge(hiScoreVideo, dff, by = c("user_id","video_id", "mv_ratio"),all=TRUE)
+```
 
-    ##Segmenting High Score Users by Frequency
-hiScoreByFreq <-  hiScoreVideo_new %>% group_by(user_id) %>% 
-                  summarise(freq = n(), totalScore = sum(score), totalScoreNew = sum(scoreNew),
-                     country = unique(country), gender = unique(gender))
+## Segmenting by Frequency
+
+```{r}
+##Segmenting High Score Users by Frequency
+hiScoreByFreq <-    hiScoreVideo_new %>%
+    group_by(user_id)                %>%
+    summarise(freq          = n(),
+              totalScore    = sum(score),
+              totalScoreNew = sum(scoreNew),
+              country       = unique(country),
+              gender        = unique(gender)
+              )
 quantile(hiScoreByFreq$freq, seq(0,1,0.05)) 
- 
-##making different df by Freq (95%ile & above; 65-95 %ile; < 65%ile)
+```
 
-hiScoreHiFreq <- subset(hiScoreByFreq, freq >= 40)
-hiScoreMoFreq <- subset(hiScoreByFreq, freq >= 20 & freq <40)
+We segment the users into the 95, 65-95, < 65 percentiles.
+
+```{r}
+#making different df by Freq (95%ile & above; 65-95 %ile; < 65%ile)
+hiScoreHiFreq  <- subset(hiScoreByFreq, freq >= 40)
+hiScoreMoFreq  <- subset(hiScoreByFreq, freq >= 20 & freq <40)
 hiScoreLowFreq <- subset(hiScoreByFreq, freq < 20)
-
-  # with video details
-hiScHiFreqVideo <- subset(hiScoreVideo_new, hiScoreVideo$user_id %in% hiScoreHiFreq$user_id)
-hiScMoFreqVideo <- subset(hiScoreVideo_new, hiScoreVideo$user_id %in% hiScoreMoFreq$user_id)
+# with video details
+hiScHiFreqVideo  <- subset(hiScoreVideo_new, hiScoreVideo$user_id %in% hiScoreHiFreq$user_id)
+hiScMoFreqVideo  <- subset(hiScoreVideo_new, hiScoreVideo$user_id %in% hiScoreMoFreq$user_id)
 hiScLowFreqVideo <- subset(hiScoreVideo_new, hiScoreVideo$user_id %in% hiScoreLowFreq$user_id)
+```
 
+## Ranking the users
+
+```{r}
 #*** RANKING CODE (based on the new scoring scheme - scoreNew)
-  hiScHiFreqRankNew <- hiScHiFreqVideo %>% group_by(video_id) %>% 
-    summarise(
-      totalviews= n(), 
-    scoreNew1views = sum(scoreNew == "1")/n(), 
-    scoreNew2views = sum(scoreNew=="2")/n(), 
-    scoreNew3views = sum(scoreNew=="3")/n(), 
-    scoreNew4views = sum(scoreNew=="4")/n(), 
-    RankingNew = ((scoreNew1views*1+scoreNew2views*2+scoreNew3views*3+ scoreNew4views*4)*
-                  (scoreNew3views+scoreNew4views)*totalviews)) %>% arrange(desc(RankingNew))
-  
-                                                                                                                                                
-  ##Plot both old and new rankings and score views
-    
-    hiScHiFreqRankNew <- merge(hiScHiFreqRankNew, hiScHiFreqRankOld %>% select(video_id, RankingOld) , by = c("video_id"), all.x = TRUE) 
 
-  ## Plot for New Ranking (with a line for Old Ranking as well)
-    
-    hiScHiFreqRankNew %<>% arrange(desc(RankingNew))
-    hiScHiFreqRankNew$video_id = factor(hiScHiFreqRankNew$video_id, levels = as.character(hiScHiFreqRankNew$video_id))
-    
+hiScHiFreqRankNew <- hiScHiFreqVideo %>% group_by(video_id) %>% 
+summarise(
+  totalviews     = n(), 
+  scoreNew1views = sum(scoreNew == "1")/n(), 
+  scoreNew2views = sum(scoreNew=="2")/n(), 
+  scoreNew3views = sum(scoreNew=="3")/n(), 
+  scoreNew4views = sum(scoreNew=="4")/n(), 
+  RankingNew     = ((scoreNew1views*1+scoreNew2views*2+scoreNew3views*3+ scoreNew4views*4)* (scoreNew3views+scoreNew4views)*totalviews)
+  ) %>%
+arrange(desc(RankingNew))
+```
 
-  hiScHiFreqRankNew_long = hiScHiFreqRankNew %>%
+We check to see if the new ranking system has an effect
+
+```{r compareRanking}
+##Plot both old and new rankings and score views
+hiScHiFreqRankNew <- merge(hiScHiFreqRankNew, hiScHiFreqRankOld %>% select(video_id, RankingOld) , by = "video_id", all.x = TRUE)
+
+## Plot for New Ranking (with a line for Old Ranking as well)
+
+#Set Factor levels
+hiScHiFreqRankNew %<>% arrange(desc(RankingNew))
+hiScHiFreqRankNew$video_id %<>% factor(levels = as.character(hiScHiFreqRankNew$video_id))
+
+hiScHiFreqRankNew_long <- hiScHiFreqRankNew %>%
     gather(scoreType, value, -video_id, -totalviews, -RankingNew, -RankingOld)
-  
-  rankDFNew = hiScHiFreqRankNew_long %>% select(video_id, RankingNew, RankingOld) %>% unique
-  rankDFNew %<>% gather(rankType, value, -video_id)
-  pdf("../out/scoreTypeRankingNEW2.pdf", w=20)
-  hiScHiFreqRankNew_long %>% mutate(newValue = value* totalviews) %>% 
-    ggplot(aes(x=video_id, y=newValue))                                 +
-    geom_line(aes(group=scoreType, color=scoreType))                    +
-    geom_line(data=rankDFNew, inherit.aes=FALSE, aes(video_id, value/2, group=rankType, linetype=rankType), color="black",size=0.5) +
-    ylab("Totalviews")+ggtitle("New ranking")
-  dev.off() 
-  
+
+rankDFNew <- hiScHiFreqRankNew_long %>% select(video_id, RankingNew, RankingOld) %>% unique
+rankDFNew %<>% gather(rankType, value, -video_id)
+```
+
+```{r scoreTypeRankingNEW2}
+#  pdf("../out/.pdf", w=20)
+hiScHiFreqRankNew_long %>% 
+    mutate(newValue = value * totalviews) %>% 
+    ggplot(aes(x=video_id, y=newValue))                                                                                                 +
+        geom_line(aes(group=scoreType, color=scoreType))                                                                                +
+        geom_line(data=rankDFNew, inherit.aes=FALSE, aes(video_id, value/2, group=rankType, linetype=rankType), color="black",size=0.5) +
+        ylab("Totalviews")                                                                                                              +
+        ggtitle("New ranking")
+#  dev.off() 
+```
+
+```{r}
 ## Plot for Old Ranking** No Need to run til you want to look at the details
   
-  hiScHiFreqRankOld <- hiScHiFreqVideo %>% group_by(video_id) %>% 
+hiScHiFreqRankOld <- hiScHiFreqVideo %>%
+group_by(video_id) %>%
     summarise(
-      totalviews= n(), 
-      score1views = sum(score == "1")/n(),
-      score2views = sum(score=="2")/n(),
-      score3views = sum(score=="3")/n(),
-      RankingOld = ((score1views*1+score2views*2+score3views*3)*
-                      (score2views+score3views)*totalviews))%>% arrange(desc(RankingOld))
+      totalviews   =  n(),
+      score1views  =  sum(score == "1")/n(),
+      score2views  =  sum(score=="2")/n(),
+      score3views  =  sum(score=="3")/n(),
+      RankingOld   =  ((score1views*1+score2views*2+score3views*3)*(score2views+score3views)*totalviews)
+)%>% 
+arrange(desc(RankingOld))
   
-  hiScHiFreqRankOld %<>% arrange(desc(RankingOld))
-  hiScHiFreqRankOld$video_id = factor(hiScHiFreqRankOld$video_id, levels = as.character(hiScHiFreqRankOld$video_id))
+hiScHiFreqRankOld %<>% arrange(desc(RankingOld))
+hiScHiFreqRankOld$video_id = factor(hiScHiFreqRankOld$video_id, levels = as.character(hiScHiFreqRankOld$video_id))
   
-  hiScHiFreqRankOld_long = hiScHiFreqRankOld %>%
-    gather(scoreType, value, -video_id, -totalviews, -RankingOld)
+hiScHiFreqRankOld_long = hiScHiFreqRankOld %>%
+gather(scoreType, value, -video_id, -totalviews, -RankingOld)
   
-  rankDFOld = hiScHiFreqRankOld_long %>% select(video_id, RankingOld) %>% unique
+rankDFOld = hiScHiFreqRankOld_long %>% select(video_id, RankingOld) %>% unique
+```
+
+```{r scoreTypeRankingOLD}
+#  pdf("../out/.pdf", w=20) 
+hiScHiFreqRankOld_long                %>%
+mutate(newValue = value * totalviews) %>%
+ggplot(aes(x=video_id, y=newValue))                                 +
+    geom_line(aes(group=scoreType, color=scoreType))                +
+    geom_line(data=rankDFOld,
+        aes(video_id, RankingOld/2, group=1),
+        inherit.aes=FALSE, color="black", size=1.5)                 +
+    ylab("Totalviews")                                              +
+    ggtitle("Old ranking")
+#  dev.off()
+```
+
+```{r noNeed, eval=FALSE, echo=FALSE}
+##seeing country wise behaviour for the top countries
   
-  pdf("../out/scoreTypeRankingOLD.pdf", w=20) 
-  hiScHiFreqRankOld_long %>% mutate(newValue = value* totalviews) %>% 
-    ggplot(aes(x=video_id, y=newValue))                                 +
-    geom_line(aes(group=scoreType, color=scoreType))                    +
-    geom_line(data=rankDFOld, inherit.aes=FALSE, aes(video_id, RankingOld/2, group=1), color="black", size=1.5) +
-    ylab("Totalviews")+ggtitle("Old ranking")
-  dev.off() 
-  
-  
-# ********************************NO NEED***************************************
-  ##seeing country wise behaviour for the top countries
-  
-  ## pattern by Country of User
+## pattern by Country of User
 hiScoreHiFreq %>% group_by(country) %>% 
     summarise(CountryFreq = sum(freq), CountryScore = sum(totalScore), 
               f=sum(gender=="f"),m=sum(gender=="m"), o=sum(gender=="o"), N=sum(gender=="None"),
               total = n())%>% arrange(desc(CountryFreq)) %>% head(n=1)
 
 subset(hiScHiFreqVideo, country == "Country001") %>% group_by(origin_country, gender) %>% summarise(totalScore = sum(score)) %>% ggplot(aes(reorder(origin_country, totalScore), totalScore))+geom_boxplot()+ aes(color = gender)
+```
 
-##hiScoreHiFreq pattern by gender and score & freq
-hiScoreHiFreq %>% group_by(country) %>% summarise(CountryFreq = sum(freq), CountryScore = sum(totalScore), f=sum(gender=="f"),m=sum(gender=="m"), o=sum(gender=="o"), N=sum(gender=="None"), total = n())%>% arrange(desc(CountryFreq)) %>% head(n=15)
+## High-Score High-Freq 
+
+Segmented by gender, score, Frequency
+
+```{r eval=FALSE, echo=FALSE}
+group_by(country)                   %>%
+summarise(
+    CountryFreq = sum(freq),
+    CountryScore = sum(totalScore),
+    f=sum(gender=="f"),
+    m=sum(gender=="m"),
+    o=sum(gender=="o"),
+    N=sum(gender=="None"),
+    total = n()
+    )                               %>%
+arrange(desc(CountryFreq))          %>%
+head(n=15)
 
 #**********************************************************************
 #freq Score and User Profiles by Country ***** Results
+
 country CountryFreq CountryScore    f   m  o    N total
 1  Country001      184456       353014 1777 335 10 1582  3704
 2  Country010       31012        57972  435  42  0  139   616
@@ -198,10 +251,15 @@ country CountryFreq CountryScore    f   m  o    N total
 ##PDF of the graphs (originCountry_Score_by Gender)
 pdf("~/Desktop/VideoByCountry.pdf")
 subset(hiScHiFreqVideo, country == "Country001") %>% group_by(origin_country, gender) %>% summarise(totalScore = sum(score)) %>% ggplot(aes(reorder(origin_country, totalScore), totalScore))+geom_boxplot()+ aes(color = gender) +ggtitle("Country001")
+
 > subset(hiScHiFreqVideo, country == "Country010") %>% group_by(origin_country, gender) %>% summarise(totalScore = sum(score)) %>% ggplot(aes(reorder(origin_country, totalScore), totalScore))+geom_boxplot()+ aes(color = gender) +ggtitle("Country010")
+
 > subset(hiScHiFreqVideo, country == "Country002") %>% group_by(origin_country, gender) %>% summarise(totalScore = sum(score)) %>% ggplot(aes(reorder(origin_country, totalScore), totalScore))+geom_boxplot()+ aes(color = gender) +ggtitle("Country002")
+
 > subset(hiScHiFreqVideo, country == "Country003") %>% group_by(origin_country, gender) %>% summarise(totalScore = sum(score)) %>% ggplot(aes(reorder(origin_country, totalScore), totalScore))+geom_boxplot()+ aes(color = gender) +ggtitle("Country003")
+
 > subset(hiScHiFreqVideo, country == "Country007") %>% group_by(origin_country, gender) %>% summarise(totalScore = sum(score)) %>% ggplot(aes(reorder(origin_country, totalScore), totalScore))+geom_boxplot()+ aes(color = gender) +ggtitle("Country007")
+
 > subset(hiScHiFreqVideo, country == "Country014") %>% group_by(origin_country, gender) %>% summarise(totalScore = sum(score)) %>% ggplot(aes(reorder(origin_country, totalScore), totalScore))+geom_boxplot()+ aes(color = gender) +ggtitle("Country014")
 > subset(hiScHiFreqVideo, country == "Country009") %>% group_by(origin_country, gender) %>% summarise(totalScore = sum(score)) %>% ggplot(aes(reorder(origin_country, totalScore), totalScore))+geom_boxplot()+ aes(color = gender) +ggtitle("Country009")
 > subset(hiScHiFreqVideo, country == "Country045") %>% group_by(origin_country, gender) %>% summarise(totalScore = sum(score)) %>% ggplot(aes(reorder(origin_country, totalScore), totalScore))+geom_boxplot()+ aes(color = gender) +ggtitle("Country045")
@@ -212,10 +270,6 @@ subset(hiScHiFreqVideo, country == "Country001") %>% group_by(origin_country, ge
 > subset(hiScHiFreqVideo, country == "Country021") %>% group_by(origin_country, gender) %>% summarise(totalScore = sum(score)) %>% ggplot(aes(reorder(origin_country, totalScore), totalScore))+geom_boxplot()+ aes(color = gender) +ggtitle("Country021")
 > dev.off()
 ```
-
-##Introduce new Score Levels - 1,2,3,4
-
-##**Merge with HiScHiFreqVideo
 
 ## Session Infomation
 
