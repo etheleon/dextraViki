@@ -30,40 +30,39 @@ runPCA <- function(df){
 closest <- function(latentVars, distance="euclidian", top = 5, users, behaviour, cores = 1){
     aDist <- latentVars %>% dist %>% as.matrix
     message("#calculatedDistance")
-    outCSV = 1:nrow(latentVars) %>% #nrow(aDist) %>% 
+
+    ranking = behaviour                                      %>%
+                group_by(video_id)                             %>%
+                summarise(count = n(), aveMV = mean(mv_ratio))
+ 
+    
+    outCSV = 1:nrow(latentVars) %>% #loop through all users
         mclapply(function(rowID){
+            print(rowID)
             closestUsers = users[head(order(aDist[-1,rowID]),top)+1] #we take the top 5 most similar 100 users
 
             closestVids  =  behaviour %>% subset(user_id %in% closestUsers) %$% video_id %>% unique
 
             #videos which user himself has seen
             hisVids = behaviour %>% subset(user_id == users[rowID]) %$% video_id
-            candidates = closestVids[which(!closestVids %in% hisVids)]
-            topcandidate = whichVideos(candidates, behaviour)
-            data.frame(user_id = users[rowID], video_id = topcandidate)
-    }, mc.cores = cores)
-}
 
-#' whichVideos choses which videos watched by the user's neighbours to recommend
-
-#' the description
-
-#' @param candidate
-
-whichVideos <- function(candidates, behaviour){
-    vidRecommend = 
-        behaviour                                      %>%
-        subset(video_id %in% candidates)               %>%
-        group_by(video_id)                             %>%
-        summarise(count = n(), aveMV = mean(mv_ratio)) %>%
-        arrange(desc(count), desc(aveMV))              %>%
-        head(6)                                        %$%
-    video_id #can be optimised to search for time
-    if(length(vidRecommend)<3){
-        NA
+            candidates   = closestVids[which(!closestVids %in% hisVids)]
+            
+            vidRecommend =
+                ranking %>%
+                filter(video_id %in% candidates)               %>%
+                arrange(desc(count), desc(aveMV)) %>%
+                head(6)                                        %$%
+                video_id #can be optimised to search for time
+     if(length(vidRecommend)<3){
+        data.frame(user_id = character(), video_id = character())
     }else{
-        vidRecommend
-    }
+        data.frame(
+                       user_id = users[rowID], 
+                       video_id = vidRecommend
+                       )
+     }
+}, mc.cores = cores)
 }
 
 #' choosePC determines the N of PCs to consider to account for ~50% fo the variability
@@ -86,5 +85,3 @@ choosePC <- function(pcaObj, varThreshold = .5){
     message(sprintf("Selected PCs account for %s of total variance", cumVariance[v]))
     v
 }
-
-
