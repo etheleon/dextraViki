@@ -39,9 +39,9 @@ while(<$matrixFile>)
 }
 
 #Print Matrix
-my @genreColName = map {s/\s\(\S+\*?\)$//; $_ } @{$genre};
-print join "\t", "user", "country", "gender", @genreColName, "\n"; #HEADER
-print join "\t", $_, $userDetails->{$_}->{country}, $userDetails->{$_}->{gender}, @{ $userString{$_} }, "\n" for keys %userString;
+my @genreColName = map {s/\s\(\S+\*?\)$//; s/^[[:ascii:]]//g; s/\s/_/g; $_ } @{$genre};
+print join("\t", "user", "country", "gender", @genreColName),"\n"; #HEADER
+print join("\t", $_, $userDetails->{$_}->{country}, $userDetails->{$_}->{gender}, @{ $userString{$_} }), "\n" for keys %userString;
 
 sub readGenre
 {

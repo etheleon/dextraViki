@@ -4,7 +4,6 @@ title: Users with High Score
 ---
 
 ```{r init ,echo=FALSE}
-#load("../data/data.Rdata")
 library(magrittr)
 library(dplyr)
 library(tidyr)
@@ -14,8 +13,8 @@ library(recommendR)
 
 # Exploratory Analysis
 
-There were a total of `r nrow(behave)` user behaviour records with `r length(unique(behave$user_id))` users coming from 
-`r length(unique(users$countries))`.
+There were a total of `r nrow(behave)` user behaviour records with `r length(unique(behave$user_id))` users coming from
+`r length(unique(users$country))` countries.
 
 ```{r Big-table, cache=TRUE}
 userdetails_all     <- merge(behave, users, by="user_id", all.x=TRUE)
@@ -171,20 +170,19 @@ group_by(video_id) %>%
       score2views  =  sum(score=="2")/n(),
       score3views  =  sum(score=="3")/n(),
       RankingOld   =  ((score1views*1+score2views*2+score3views*3)*(score2views+score3views)*totalviews)
-)%>% 
+)%>%
 arrange(desc(RankingOld))
-  
+
 hiScHiFreqRankOld %<>% arrange(desc(RankingOld))
 hiScHiFreqRankOld$video_id = factor(hiScHiFreqRankOld$video_id, levels = as.character(hiScHiFreqRankOld$video_id))
-  
+
 hiScHiFreqRankOld_long = hiScHiFreqRankOld %>%
 gather(scoreType, value, -video_id, -totalviews, -RankingOld)
-  
+
 rankDFOld = hiScHiFreqRankOld_long %>% select(video_id, RankingOld) %>% unique
 ```
 
 ```{r scoreTypeRankingOLD}
-#  pdf("../out/.pdf", w=20) 
 hiScHiFreqRankOld_long                %>%
 mutate(newValue = value * totalviews) %>%
 ggplot(aes(x=video_id, y=newValue))                                 +
@@ -194,7 +192,6 @@ ggplot(aes(x=video_id, y=newValue))                                 +
         inherit.aes=FALSE, color="black", size=1.5)                 +
     ylab("Totalviews")                                              +
     ggtitle("Old ranking")
-#  dev.off()
 ```
 
 ```{r noNeed, eval=FALSE, echo=FALSE}
@@ -276,3 +273,5 @@ subset(hiScHiFreqVideo, country == "Country001") %>% group_by(origin_country, ge
 ```{r echo=FALSE}
 sessionInfo()
 ```
+
+## The END

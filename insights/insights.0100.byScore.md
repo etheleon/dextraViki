@@ -7,8 +7,8 @@ title: Users with High Score
 
 # Exploratory Analysis
 
-There were a total of 4881883 user behaviour records with 753272 users coming from 
-0.
+There were a total of 4881883 user behaviour records with 753272 users coming from
+228 countries.
 
 
 ```r
@@ -128,13 +128,7 @@ We check to see if the new ranking system has an effect
 ```r
 ##Plot both old and new rankings and score views
 hiScHiFreqRankNew <- merge(hiScHiFreqRankNew, hiScHiFreqRankOld %>% select(video_id, RankingOld) , by = "video_id", all.x = TRUE)
-```
 
-```
-## Error in eval(expr, envir, enclos): object 'hiScHiFreqRankOld' not found
-```
-
-```r
 ## Plot for New Ranking (with a line for Old Ranking as well)
 
 #Set Factor levels
@@ -143,26 +137,9 @@ hiScHiFreqRankNew$video_id %<>% factor(levels = as.character(hiScHiFreqRankNew$v
 
 hiScHiFreqRankNew_long <- hiScHiFreqRankNew %>%
     gather(scoreType, value, -video_id, -totalviews, -RankingNew, -RankingOld)
-```
 
-```
-## Error in eval(expr, envir, enclos): object 'RankingOld' not found
-```
-
-```r
 rankDFNew <- hiScHiFreqRankNew_long %>% select(video_id, RankingNew, RankingOld) %>% unique
-```
-
-```
-## Error in eval(expr, envir, enclos): object 'hiScHiFreqRankNew_long' not found
-```
-
-```r
 rankDFNew %<>% gather(rankType, value, -video_id)
-```
-
-```
-## Error in eval(expr, envir, enclos): object 'rankDFNew' not found
 ```
 
 
@@ -177,9 +154,7 @@ hiScHiFreqRankNew_long %>%
         ggtitle("New ranking")
 ```
 
-```
-## Error in eval(expr, envir, enclos): object 'hiScHiFreqRankNew_long' not found
-```
+![plot of chunk scoreTypeRankingNEW2](figure/scoreTypeRankingNEW2-1.png) 
 
 ```r
 #  dev.off() 
@@ -197,21 +172,20 @@ group_by(video_id) %>%
       score2views  =  sum(score=="2")/n(),
       score3views  =  sum(score=="3")/n(),
       RankingOld   =  ((score1views*1+score2views*2+score3views*3)*(score2views+score3views)*totalviews)
-)%>% 
+)%>%
 arrange(desc(RankingOld))
-  
+
 hiScHiFreqRankOld %<>% arrange(desc(RankingOld))
 hiScHiFreqRankOld$video_id = factor(hiScHiFreqRankOld$video_id, levels = as.character(hiScHiFreqRankOld$video_id))
-  
+
 hiScHiFreqRankOld_long = hiScHiFreqRankOld %>%
 gather(scoreType, value, -video_id, -totalviews, -RankingOld)
-  
+
 rankDFOld = hiScHiFreqRankOld_long %>% select(video_id, RankingOld) %>% unique
 ```
 
 
 ```r
-#  pdf("../out/.pdf", w=20) 
 hiScHiFreqRankOld_long                %>%
 mutate(newValue = value * totalviews) %>%
 ggplot(aes(x=video_id, y=newValue))                                 +
@@ -224,10 +198,6 @@ ggplot(aes(x=video_id, y=newValue))                                 +
 ```
 
 ![plot of chunk scoreTypeRankingOLD](figure/scoreTypeRankingOLD-1.png) 
-
-```r
-#  dev.off()
-```
 
 
 
@@ -260,8 +230,11 @@ Segmented by gender, score, Frequency
 ##  [4] DBI_0.3.1         digest_0.6.8      evaluate_0.7     
 ##  [7] formatR_1.2       grid_3.1.1        gtable_0.1.2     
 ## [10] labeling_0.3      lazyeval_0.1.10   markdown_0.7.7   
-## [13] MASS_7.3-35       memoise_0.2.1     munsell_0.4.2    
-## [16] parallel_3.1.1    plyr_1.8.3        proto_0.3-10     
-## [19] Rcpp_0.12.0       reshape2_1.4.1    scales_0.2.5.9000
-## [22] stringi_0.5-5     stringr_1.0.0     tools_3.1.1
+## [13] MASS_7.3-35       memoise_0.2.1     mime_0.3         
+## [16] munsell_0.4.2     parallel_3.1.1    plyr_1.8.3       
+## [19] proto_0.3-10      Rcpp_0.12.0       reshape2_1.4.1   
+## [22] scales_0.2.5.9000 stringi_0.5-5     stringr_1.0.0    
+## [25] tools_3.1.1
 ```
+
+## The END

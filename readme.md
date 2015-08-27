@@ -11,11 +11,11 @@ I'm recommending videos with the highest average
 ## Introduction
 
 Due to relatively high dimensionality of the genres (total 33),
-its computationally extensive to calculate the similarity of
+its computationally extensive to calculate the pairwise similarity of user viewing data based on the genres
 
 We employ dimensionality reduction using Principal Component Analysis (PCA) to identify
 
-In the first step carrying out PCA.
+In the first step carrying out PCA
 
 ## Methods
 
@@ -24,14 +24,15 @@ The package includes a **tools** folder which contains the genre2matrix perl exe
 ### genre2matrix (perl)
 
 linux/osx command
+
 ```
 $ perl genre2matrix --table inputTable --users --genres
 ```
 
-windows command
+windows command prompt
 
 ```
-perl genre2matrix --table inputTable --users --genres
+C:\> perl genre2matrix --table inputTable --users --genres
 ```
 
 #### example 
@@ -53,8 +54,17 @@ perl genre2matrix --table inputTable --users --genres
 
 ##### users
 
+original csv provided in the challenge
 
-##### genres
+
+| userid | country    | gender |
+| ---    | ---        | ---    |
+| 1      | Country001 | None   |
+| 2      | Country002 | None   |
+| 3      | Country001 | None   |
+| 4      | Country003 | None   |
+| 5      | Country001 | None   |
+| 6      | Country004 | None   |
 
 
 ## Output
