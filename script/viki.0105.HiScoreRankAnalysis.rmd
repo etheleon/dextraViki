@@ -1,27 +1,36 @@
-#!/usr/bin/env Rscript
+---
+> Author: Wesley & Ritika
 
+# Title: Segmentation of User Base and Ranking of Videos
+___
+
+```{r,eval=FALSE, echo=FALSE}
 load("../data/data.Rdata")
 library (magrittr)
 library (dplyr)
 library (tidyr)
 library (ggplot2)
+```
 
-# Merged user behave and video attributes datasets
+* Merged user behave and video attributes datasets
 
-```{r init,echo=FALSE}
+```{r init,eval=FALSE, echo=FALSE}
 userdetails_all <- merge(behave, users, by="user_id", all.x=TRUE)
 user_video_nocast <- merge(userdetails_all, videos_attributes, 
                                by="video_id", all.x=TRUE)
 ```
-# We decided to further segment the scores into 4 categories and updated the dataset of hiScore and low Score Users
+
+* We decided to further segment the scores into 4 categories and updated the dataset of hiScore and low Score Users.
+
+
 | newScore | range               |
-  | ---      | ---                 |
-  | 1        | mv_ratio < 20       |
-  | 2        | 20 <= mv_ratio < 50 |
-  | 3        | 50 <= mv_ratio < 80 |
-  | 4        | mv_ratio >= 80 |
+| ---      | ---                 |
+| 1        | mv_ratio < 20       |
+| 2        | 20 <= mv_ratio < 50 |
+| 3        | 50 <= mv_ratio < 80 |
+| 4        | mv_ratio >= 80      |
   
-  ```{r eval=FALSE, echo=FALSE}
+```{r eval=FALSE, echo=FALSE}
 dff = user_video_nocast %>% 
   transmute(mv_ratio = mv_ratio, video_id = video_id, user_id = user_id, 
             Score1 = (mv_ratio < 20 )*1,
@@ -40,10 +49,11 @@ user_video_nocast_new <- merge(user_video_nocast, dff,
                           by= c("user_id","video_id", "mv_ratio"),all=TRUE)
 ```
 
-# Identify the highly engaged UserBase based on initial scoring scheme.
-##  We segmented users into high score users (top 20 percentile) and low score users (rest 80 percentile). 
+* Identify the highly engaged UserBase based on initial scoring scheme.
 
-```{r}
+We segmented users into high score users (top 20 percentile) and low score users (rest 80 percentile). 
+
+```{r eval=FALSE, echo=FALSE}
 uu2 <- user_video_nocast %>% group_by(user_id) %>% 
   summarise( totalScore = sum(score),freq = n(), country = unique(country), 
              gender = unique(gender)) %>% arrange(desc(totalScore))
@@ -53,9 +63,14 @@ lowScore<- subset(uu2, totalScore < quantile(uu2$totalScore,0.8))
 hiScoreVideo <- subset(user_video_nocast_new, user_id %in% unique(hiScore$user_id))
 lowScoreVideo <- subset(user_video_nocast_new, user_id %in% unique(lowScore$user_id))
 ```
-# we ranked the videos (watched by high Score Users) based on their frequency giving higher weights to views with mv_ratio > 50.
+* we developed a ranking scheme for videos Ranks = f(frequency of visits, score). We gave high weights to videos with mv_ratio   >=50 
 
-```{r}
+Logic: This is to overcome the dilemma where a highly clicked video with very low score may rank equal to a moderately                  viewed video with highScore. 
+Formulae for Ranking (based on new scoring system):
+
+> (score1views*1 +score2views*2 + score3views*3 + score4views*4)* (score3views+score4views)*totalviews)
+
+```{r eval=FALSE, echo=FALSE}
 hiScoreRankNew <- hiScoreVideo_new %>% group_by(video_id) %>% 
   summarise(
     totalviews= n(), 
@@ -79,6 +94,5 @@ videoRankGenre <- merge(videoranksHiScore, videos_attributes%>% select(video_id,
 ```{r echo=FALSE}
 sessionInfo()
 ```
-
 
 
